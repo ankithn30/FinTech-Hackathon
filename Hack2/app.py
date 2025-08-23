@@ -43,6 +43,10 @@ class ContactInfo(BaseModel):
 def index():
     return render_template('index.html')
 
+@app.route('/upload-interface')
+def upload_interface():
+    return send_file('Frontend/index.html')
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -188,13 +192,22 @@ def fill_pdf_form():
             
             data = json.loads(extracted_data)
             
+            # Validate that we have the required data
+            if not data or not isinstance(data, dict):
+                return jsonify({'success': False, 'error': 'Invalid data format'}), 400
+            
+            # Ensure all required fields exist
+            required_fields = ['name', 'phone_number', 'address', 'email']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            if missing_fields:
+                return jsonify({'success': False, 'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
+            
             # Save the form PDF temporarily
             filename = secure_filename(form_pdf.filename)
             form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"form_{filename}")
             form_pdf.save(form_filepath)
             
-            # For now, we'll create a simple filled PDF using reportlab
-            # In a production environment, you might want to use PyPDF2 or similar
+            # Create a filled PDF using reportlab
             try:
                 from reportlab.pdfgen import canvas
                 from reportlab.lib.pagesizes import letter
@@ -202,9 +215,11 @@ def fill_pdf_form():
                 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
                 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
                 
-                # Create output filename
+                # Create output filename and use temporary file for better reliability
                 output_filename = f"filled_{filename}"
-                output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+                # Use a temporary file that will be automatically cleaned up
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as temp_file:
+                    output_filepath = temp_file.name
                 
                 # Create PDF with extracted data
                 doc = SimpleDocTemplate(output_filepath, pagesize=letter)
@@ -231,24 +246,68 @@ def fill_pdf_form():
                     leftIndent=50
                 )
                 
-                story.append(Paragraph(f"<b>Name:</b> {data.get('name', 'N/A')}", data_style))
-                story.append(Paragraph(f"<b>Phone Number:</b> {data.get('phone_number', 'N/A')}", data_style))
-                story.append(Paragraph(f"<b>Address:</b> {data.get('address', 'N/A')}", data_style))
-                story.append(Paragraph(f"<b>Email:</b> {data.get('email', 'N/A')}", data_style))
+                # Safely get data values with proper encoding
+                name = str(data.get('name', 'N/A')).encode('utf-8', errors='ignore').decode('utf-8')
+                phone = str(data.get('phone_number', 'N/A')).encode('utf-8', errors='ignore').decode('utf-8')
+                address = str(data.get('address', 'N/A')).encode('utf-8', errors='ignore').decode('utf-8')
+                email = str(data.get('email', 'N/A')).encode('utf-8', errors='ignore').decode('utf-8')
                 
-                # Build PDF
-                doc.build(story)
+                story.append(Paragraph(f"<b>Name:</b> {name}", data_style))
+                story.append(Paragraph(f"<b>Phone Number:</b> {phone}", data_style))
+                story.append(Paragraph(f"<b>Address:</b> {address}", data_style))
+                story.append(Paragraph(f"<b>Email:</b> {email}", data_style))
+                
+                # Build PDF with error handling
+                try:
+                    doc.build(story)
+                except Exception as build_error:
+                    return jsonify({'success': False, 'error': f'PDF generation failed: {str(build_error)}'}), 500
                 
                 # Clean up form PDF
                 os.remove(form_filepath)
                 
+                # Ensure the PDF file is properly closed and flushed
+                import time
+                time.sleep(0.2)  # Small delay to ensure file is fully written
+                
+                # Check if file exists and has content
+                if not os.path.exists(output_filepath) or os.path.getsize(output_filepath) == 0:
+                    return jsonify({'success': False, 'error': 'Failed to generate PDF file'}), 500
+                
+                # Verify PDF file integrity
+                try:
+                    with open(output_filepath, 'rb') as f:
+                        header = f.read(4)
+                        if header != b'%PDF':
+                            return jsonify({'success': False, 'error': 'Generated file is not a valid PDF'}), 500
+                except Exception as e:
+                    return jsonify({'success': False, 'error': f'PDF validation failed: {str(e)}'}), 500
+                
                 # Return the filled PDF
-                return send_file(
+                response = send_file(
                     output_filepath,
                     as_attachment=True,
                     download_name=output_filename,
                     mimetype='application/pdf'
                 )
+                
+                # Clean up the temporary file after sending
+                def cleanup_file():
+                    import time
+                    time.sleep(2)  # Wait for file to be sent
+                    try:
+                        if os.path.exists(output_filepath):
+                            os.remove(output_filepath)
+                    except:
+                        pass
+                
+                # Schedule cleanup
+                import threading
+                cleanup_thread = threading.Thread(target=cleanup_file)
+                cleanup_thread.daemon = True
+                cleanup_thread.start()
+                
+                return response
                 
             except ImportError:
                 # Fallback if reportlab is not available
@@ -256,6 +315,13 @@ def fill_pdf_form():
                     'success': False, 
                     'error': 'PDF generation library not available. Please install reportlab: pip install reportlab'
                 })
+            except Exception as e:
+                # Log the error for debugging
+                print(f"PDF generation error: {str(e)}")
+                return jsonify({
+                    'success': False, 
+                    'error': f'PDF generation failed: {str(e)}'
+                }), 500
                 
         except Exception as e:
             # Clean up files on error
