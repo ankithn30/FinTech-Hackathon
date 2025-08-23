@@ -1,0 +1,6 @@
+flask==2.3.3
+llama-cloud-services
+pydantic
+python-dotenv
+werkzeug
+reportlab

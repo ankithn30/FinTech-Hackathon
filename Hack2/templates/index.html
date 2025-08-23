@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Text Extractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background-color: rgba(102, 126, 234, 0.05);
+        }
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background-color: rgba(102, 126, 234, 0.1);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .result-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            border: none;
+        }
+        .schema-builder {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .field-input {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+        .field-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="main-container p-5">
+                    <div class="text-center mb-5">
+                        <h1 class="display-4 fw-bold text-primary mb-3">
+                            <i class="fas fa-file-pdf text-danger me-3"></i>
+                            PDF Text Extractor
+                        </h1>
+                        <p class="lead text-muted">Extract contact information (name, phone, address, email) from PDF documents using AI-powered LlamaCloud</p>
+                    </div>
+
+                    <!-- File Upload Section -->
+                    <div class="upload-area p-5 text-center mb-4" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                        <h4 class="mb-3">Upload your PDF file</h4>
+                        <p class="text-muted mb-3">Drag and drop your PDF here or click to browse</p>
+                        <input type="file" id="fileInput" accept=".pdf" class="d-none">
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-folder-open me-2"></i>Choose File
+                        </button>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div id="progressSection" class="d-none mb-4">
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" id="progressBar">
+                                Processing...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsSection" class="d-none">
+                        <div class="card result-card">
+                            <div class="card-header bg-transparent border-0">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Extraction Results
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="extractedData"></div>
+                                <div class="d-flex gap-2 mt-3">
+                                    <button class="btn btn-light" onclick="downloadResults()">
+                                        <i class="fas fa-download me-2"></i>Download JSON
+                                    </button>
+                                    <button class="btn btn-outline-light" onclick="clearStoredData()">
+                                        <i class="fas fa-trash me-2"></i>Clear Stored Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PDF Form Filler Section -->
+                    <div id="formFillerSection" class="d-none mt-4">
+                        <div class="card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; border-radius: 15px;">
+                            <div class="card-header bg-transparent border-0">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-file-pdf me-2"></i>
+                                    Fill PDF Form with Extracted Data
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-3">Upload a blank PDF form and we'll fill it with the extracted contact information:</p>
+                                
+                                <!-- PDF Form Upload -->
+                                <div class="mb-4">
+                                    <div class="upload-area p-4 text-center" style="border: 2px dashed white; border-radius: 10px;">
+                                        <i class="fas fa-upload fa-2x mb-2"></i>
+                                        <h6 class="mb-2">Upload Blank PDF Form</h6>
+                                        <p class="mb-3" style="font-size: 14px;">Drag and drop your PDF form here or click to browse</p>
+                                        <input type="file" id="formPdfInput" accept=".pdf" class="d-none">
+                                        <button class="btn btn-light" onclick="document.getElementById('formPdfInput').click()">
+                                            <i class="fas fa-folder-open me-2"></i>Choose PDF Form
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Extracted Data Preview -->
+                                <div class="mb-4">
+                                    <h6 class="mb-3">Data to be filled:</h6>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Name:</strong> <span id="previewName">-</span>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Phone:</strong> <span id="previewPhone">-</span>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Address:</strong> <span id="previewAddress">-</span>
+                                        </div>
+                                        <div class="col-md-6 mb-2">
+                                            <strong>Email:</strong> <span id="previewEmail">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-light" onclick="fillPdfForm()" id="fillPdfBtn" disabled>
+                                        <i class="fas fa-magic me-2"></i>Fill PDF Form
+                                    </button>
+                                    <button class="btn btn-outline-light" onclick="clearFormData()">
+                                        <i class="fas fa-eraser me-2"></i>Clear Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Schema Builder Section -->
+                    <div class="schema-builder">
+                        <h5 class="mb-3">
+                            <i class="fas fa-cogs me-2"></i>
+                            Custom Schema Builder
+                        </h5>
+                        <p class="text-muted mb-3">Define custom fields for extraction</p>
+                        
+                        <div id="schemaFields">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control field-input" placeholder="Field name" 
+                                           value="name">
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select field-input">
+                                        <option value="string">String</option>
+                                        <option value="list">List</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control field-input" placeholder="Description" 
+                                           value="Full name of person">
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control field-input" placeholder="Field name" 
+                                           value="phone_number">
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select field-input">
+                                        <option value="string">String</option>
+                                        <option value="list">List</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control field-input" placeholder="Description" 
+                                           value="Phone number">
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control field-input" placeholder="Field name" 
+                                           value="address">
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select field-input">
+                                        <option value="string">String</option>
+                                        <option value="list">List</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control field-input" placeholder="Description" 
+                                           value="Full address or location">
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control field-input" placeholder="Field name" 
+                                           value="email">
+                                </div>
+                                <div class="col-md-4">
+                                    <select class="form-select field-input">
+                                        <option value="string">String</option>
+                                        <option value="list">List</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control field-input" placeholder="Description" 
+                                           value="Email address">
+                                </div>
+                                <div class="col-md-1">
+                                    <button class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-outline-primary" onclick="addField()">
+                            <i class="fas fa-plus me-2"></i>Add Field
+                        </button>
+                        
+                        <button class="btn btn-success ms-2" onclick="updateSchema()">
+                            <i class="fas fa-save me-2"></i>Update Schema
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let extractedData = null;
+        let currentSchema = {};
+
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (file.type !== 'application/pdf') {
+                alert('Please select a PDF file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showProgress();
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProgress();
+                if (data.success) {
+                    extractedData = data.data;
+                    displayResults(data.data, data.filename);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideProgress();
+                alert('Error: ' + error.message);
+            });
+        }
+
+        function showProgress() {
+            document.getElementById('progressSection').classList.remove('d-none');
+            document.getElementById('resultsSection').classList.add('d-none');
+            
+            let progress = 0;
+            const progressBar = document.getElementById('progressBar');
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress >= 90) {
+                    progress = 90;
+                    clearInterval(interval);
+                }
+                progressBar.style.width = progress + '%';
+                progressBar.textContent = 'Processing... ' + Math.round(progress) + '%';
+            }, 200);
+        }
+
+        function hideProgress() {
+            document.getElementById('progressSection').classList.add('d-none');
+        }
+
+        function displayResults(data, filename) {
+            const resultsSection = document.getElementById('resultsSection');
+            const extractedDataDiv = document.getElementById('extractedData');
+            const formFillerSection = document.getElementById('formFillerSection');
+            
+            let html = `<h6 class="mb-3">File: ${filename}</h6>`;
+            
+            if (Array.isArray(data)) {
+                data.forEach((item, index) => {
+                    html += `<div class="mb-3"><strong>Page ${index + 1}:</strong></div>`;
+                    html += formatData(item);
+                });
+            } else {
+                html += formatData(data);
+            }
+            
+            extractedDataDiv.innerHTML = html;
+            resultsSection.classList.remove('d-none');
+            
+            // Show the form filler section after successful extraction
+            formFillerSection.classList.remove('d-none');
+            
+            // Update the data preview in the form filler section
+            if (data && !Array.isArray(data)) {
+                document.getElementById('previewName').textContent = data.name || 'N/A';
+                document.getElementById('previewPhone').textContent = data.phone_number || 'N/A';
+                document.getElementById('previewAddress').textContent = data.address || 'N/A';
+                document.getElementById('previewEmail').textContent = data.email || 'N/A';
+            }
+        }
+
+        function formatData(data) {
+            let html = '<div class="row">';
+            for (const [key, value] of Object.entries(data)) {
+                html += `
+                    <div class="col-md-6 mb-2">
+                        <strong>${key}:</strong> 
+                        <span class="ms-2">${Array.isArray(value) ? value.join(', ') : value}</span>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function downloadResults() {
+            if (!extractedData) return;
+            
+            const dataStr = JSON.stringify(extractedData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'extracted_data.json';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function clearStoredData() {
+            fetch('/clear-stored-data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide the form filler section
+                    document.getElementById('formFillerSection').classList.add('d-none');
+                    
+                    // Clear the form fields
+                    clearForm();
+                    
+                    // Clear the extracted data variable
+                    extractedData = null;
+                    
+                    alert('Stored data cleared successfully!');
+                } else {
+                    alert('Error clearing stored data');
+                }
+            })
+            .catch(error => {
+                alert('Error clearing stored data: ' + error.message);
+            });
+        }
+
+        function addField() {
+            const schemaFields = document.getElementById('schemaFields');
+            const newField = document.createElement('div');
+            newField.className = 'row mb-3';
+            newField.innerHTML = `
+                <div class="col-md-4">
+                    <input type="text" class="form-control field-input" placeholder="Field name">
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select field-input">
+                        <option value="string">String</option>
+                        <option value="list">List</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control field-input" placeholder="Description">
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-outline-danger btn-sm" onclick="removeField(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            schemaFields.appendChild(newField);
+        }
+
+        function removeField(button) {
+            button.closest('.row').remove();
+        }
+
+        function updateSchema() {
+            const fields = {};
+            const fieldRows = document.querySelectorAll('#schemaFields .row');
+            
+            fieldRows.forEach(row => {
+                const inputs = row.querySelectorAll('input, select');
+                const fieldName = inputs[0].value.trim();
+                const fieldType = inputs[1].value;
+                const description = inputs[2].value.trim();
+                
+                if (fieldName && description) {
+                    fields[fieldName] = {
+                        type: fieldType,
+                        description: description
+                    };
+                }
+            });
+
+            if (Object.keys(fields).length === 0) {
+                alert('Please add at least one field');
+                return;
+            }
+
+            currentSchema = fields;
+            
+            fetch('/custom-schema', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(fields)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Schema updated successfully!');
+                } else {
+                    alert('Error updating schema: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error updating schema: ' + error.message);
+            });
+        }
+
+        // PDF Form Filler Functions
+        let selectedFormPdf = null;
+
+        // Handle PDF form file selection
+        document.getElementById('formPdfInput').addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                selectedFormPdf = e.target.files[0];
+                document.getElementById('fillPdfBtn').disabled = false;
+                
+                // Update the upload area to show selected file
+                const uploadArea = e.target.parentElement.querySelector('.upload-area');
+                uploadArea.innerHTML = `
+                    <i class="fas fa-check-circle fa-2x mb-2" style="color: #28a745;"></i>
+                    <h6 class="mb-2">PDF Form Selected</h6>
+                    <p class="mb-3" style="font-size: 14px;">${selectedFormPdf.name}</p>
+                    <button class="btn btn-outline-light btn-sm" onclick="changeFormPdf()">
+                        <i class="fas fa-exchange-alt me-2"></i>Change File
+                    </button>
+                `;
+            }
+        });
+
+        function changeFormPdf() {
+            selectedFormPdf = null;
+            document.getElementById('fillPdfBtn').disabled = true;
+            document.getElementById('formPdfInput').value = '';
+            
+            // Reset upload area
+            const uploadArea = document.querySelector('#formFillerSection .upload-area');
+            uploadArea.innerHTML = `
+                <i class="fas fa-upload fa-2x mb-2"></i>
+                <h6 class="mb-2">Upload Blank PDF Form</h6>
+                <p class="mb-3" style="font-size: 14px;">Drag and drop your PDF form here or click to browse</p>
+                <input type="file" id="formPdfInput" accept=".pdf" class="d-none">
+                <button class="btn btn-light" onclick="document.getElementById('formPdfInput').click()">
+                    <i class="fas fa-folder-open me-2"></i>Choose PDF Form
+                </button>
+            `;
+        }
+
+        function fillPdfForm() {
+            if (!selectedFormPdf) {
+                alert('Please select a PDF form first');
+                return;
+            }
+
+            // Check if we have extracted data
+            fetch('/get-stored-data')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success || !data.has_data || !data.data) {
+                    alert('No extracted data found. Please extract data from a PDF first.');
+                    return;
+                }
+
+                // Create FormData and send to server
+                const formData = new FormData();
+                formData.append('form_pdf', selectedFormPdf);
+
+                // Show loading state
+                const fillBtn = document.getElementById('fillPdfBtn');
+                const originalText = fillBtn.innerHTML;
+                fillBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Filling PDF...';
+                fillBtn.disabled = true;
+
+                fetch('/fill-pdf-form', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        return response.json().then(err => Promise.reject(err));
+                    }
+                })
+                .then(blob => {
+                    // Create download link for the filled PDF
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `filled_${selectedFormPdf.name}`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    
+                    alert('PDF form filled successfully! Download started.');
+                })
+                .catch(error => {
+                    alert('Error filling PDF form: ' + (error.error || error.message || 'Unknown error'));
+                })
+                .finally(() => {
+                    // Reset button state
+                    fillBtn.innerHTML = originalText;
+                    fillBtn.disabled = false;
+                });
+            })
+            .catch(error => {
+                alert('Error checking stored data: ' + error.message);
+            });
+        }
+
+        function clearFormData() {
+            // Clear the stored data
+            fetch('/clear-stored-data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Hide the form filler section
+                    document.getElementById('formFillerSection').classList.remove('d-none');
+                    
+                    // Clear the form PDF selection
+                    if (selectedFormPdf) {
+                        changeFormPdf();
+                    }
+                    
+                    // Clear the extracted data variable
+                    extractedData = null;
+                    
+                    alert('Data cleared successfully!');
+                } else {
+                    alert('Error clearing data');
+                }
+            })
+            .catch(error => {
+                alert('Error clearing data: ' + error.message);
+            });
+        }
+
+        // Check for stored data on page load
+        window.addEventListener('load', function() {
+            fetch('/get-stored-data')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.has_data && data.data) {
+                    // Show form filler section if we have stored data
+                    document.getElementById('formFillerSection').classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                console.log('No stored data found');
+            });
+        });
+    </script>
+</body>
+</html>
