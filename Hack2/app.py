@@ -2,7 +2,7 @@ import os
 import json
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, make_response, send_file
 from werkzeug.utils import secure_filename
-from llama_utils import get_extractor, ContactInfo, create_dynamic_schema
+from llama_utils import ContactInfo, create_dynamic_schema, parse_pdf_with_dynamic_schema
 from pdfwriter import fill_pdf_from_llama
 import tempfile
 
@@ -44,38 +44,28 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            # Extract data using LlamaCloud
-            extractor = get_extractor()
-            
-            # Create or get extraction agent
-            try:
-                agent = extractor.get_agent(name="contact-parser")
-            except:
-                # Create new agent if it doesn't exist
-                agent = extractor.create_agent(name="contact-parser", data_schema=ContactInfo)
-            
-            # Extract data from PDF
-            result = agent.extract(filepath)
-            
+            # Extract data using dynamic schema based on PDF structure
+            extracted_data = parse_pdf_with_dynamic_schema(filepath)
+
             # Clean up uploaded file
             os.remove(filepath)
-            
+
             # Create response with extracted data
             response = jsonify({
                 'success': True,
-                'data': result.data,
+                'data': extracted_data,
                 'filename': filename
             })
-            
+
             # Store extracted data in cookies (expires in 1 hour)
-            if result.data:
+            if extracted_data:
                 # Convert data to JSON string for cookie storage
-                cookie_data = json.dumps(result.data)
+                cookie_data = json.dumps(extracted_data)
                 response.set_cookie('extracted_data', cookie_data, max_age=3600, httponly=False)
                 response.set_cookie('has_data', 'true', max_age=3600, httponly=False)
-            
+
             return response
-            
+
         except Exception as e:
             # Clean up file on error
             if os.path.exists(filepath):
@@ -92,22 +82,10 @@ def upload_file():
 def update_schema():
     try:
         schema_data = request.json
-        extractor = get_extractor()
-
-        # Create dynamic schema class with proper type annotations
-        DynamicSchema = create_dynamic_schema(schema_data)
-
-        # Update agent with new schema
-        try:
-            agent = extractor.get_agent(name="custom-parser")
-        except:
-            agent = extractor.create_agent(name="custom-parser", data_schema=DynamicSchema)
-
-        agent.data_schema = DynamicSchema
-        agent.save()
-
+        # LlamaParse does not support agents, so we only allow dynamic schema creation if needed
+        create_dynamic_schema(schema_data)  # Create schema but don't store return value
+        # You may want to store or use the schema elsewhere in future implementations
         return jsonify({'success': True, 'message': 'Schema updated successfully'})
-
     except Exception as e:
         print(f"Schema update error: {e}")  # Add logging
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -158,17 +136,30 @@ def fill_pdf_form():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Invalid extracted data'})
 
-    # Fill Sample.pdf using pdfwriter
-    pdf_path = os.path.join('Hack2', 'Sample.pdf')
-    output_path = os.path.join('Hack2', 'Sample_filled_pdfrw.pdf')
-    try:
-        success = fill_pdf_from_llama(llama_data, pdf_path=pdf_path, output_path=output_path)
-        if success:
-            return send_file(output_path, as_attachment=True, download_name='Sample_filled_pdfrw.pdf', mimetype='application/pdf')
-        else:
-            return jsonify({'success': False, 'error': 'Failed to fill PDF form'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+    # Handle uploaded PDF form
+    if 'form_pdf' not in request.files:
+        return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+    form_pdf = request.files['form_pdf']
+    if form_pdf.filename == '':
+        return jsonify({'success': False, 'error': 'No PDF form selected'})
+    if form_pdf and allowed_file(form_pdf.filename):
+        try:
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"form_{filename}")
+            form_pdf.save(form_filepath)
+            output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"filled_{filename}")
+            success = fill_pdf_from_llama(llama_data, pdf_path=form_filepath, output_path=output_filepath)
+            if success:
+                return send_file(output_filepath, as_attachment=True, download_name=f"filled_{filename}", mimetype='application/pdf')
+            else:
+                return jsonify({'success': False, 'error': 'Failed to fill PDF form'})
+        except Exception as e:
+            if os.path.exists(form_filepath):
+                os.remove(form_filepath)
+            if os.path.exists(output_filepath):
+                os.remove(output_filepath)
+            return jsonify({'success': False, 'error': str(e)})
+    return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
