@@ -2,9 +2,8 @@ import os
 import json
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, make_response, send_file
 from werkzeug.utils import secure_filename
-from llama_utils import ContactInfo, create_dynamic_schema, parse_pdf_with_dynamic_schema
+from llama_utils import create_dynamic_schema, parse_pdf_with_dynamic_schema
 from pdfwriter import fill_pdf_from_llama
-import tempfile
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Change this in production

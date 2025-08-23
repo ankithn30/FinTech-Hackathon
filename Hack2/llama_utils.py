@@ -8,11 +8,11 @@ from typing import Dict, Any, Type
 
 load_dotenv()
 
-class ContactInfo(BaseModel):
+class UserInfo(BaseModel):
     name: str = Field(description="Full name of person")
     name_of_dependent: str = Field(description="Name of dependent")
     age_of_dependent: str = Field(description="Age of dependent")
-    dropdown2: str = Field(description="Dropdown selection")
+    dropdown: str = Field(description="Dropdown selection")
     option_1: bool = Field(description="Option 1 selected")
     option_2: bool = Field(description="Option 2 selected")
     option_3: bool = Field(description="Option 3 selected")

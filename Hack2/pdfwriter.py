@@ -125,15 +125,3 @@ def fill_pdf_pdfrw(data: Dict[str, Any], pdf_path: str = "Sample.pdf", output_pa
         return False
 
 
-if __name__ == "__main__":
-    # Example: Simulate Llama output
-    llama_output = {
-        "name": "John Smith",
-        "name_of_dependent": "Sarah Smith",
-        "age_of_dependent": "12",
-        "dropdown2": "Choice 2",
-        "option_1": True,
-        "option_2": False,
-        "option_3": False,
-    }
-    fill_pdf_from_llama(llama_output, pdf_path="Sample.pdf", output_path="Sample_filled_pdfrw.pdf")
