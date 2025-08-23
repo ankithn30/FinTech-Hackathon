@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.manifest
+*.spec
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Environment
+.env
+.env.*
+*.env
+
+# Logs
+*.log
+
+# Virtualenv
+venv/
+ENV/
+.env/
+
+# PDFs and output
+*.pdf
+Sample_filled_pdfrw.pdf
+uploads/
+
+# Node
+node_modules/
+
+# Misc
+*.sqlite3
+*.db
+*.bak
+*.swp
+*.swo
+*.tmp
+
+# System
+Thumbs.db
+Desktop.ini
+
+# Test output
+htmlcov/
+.coverage
+.tox/
+.pytest_cache/
