@@ -3,7 +3,7 @@ import json
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, make_response, send_file
 from werkzeug.utils import secure_filename
 from llama_utils import get_extractor, ContactInfo, create_dynamic_schema
-from Hack2.pdfwriter import fill_pdf_from_llama
+from pdfwriter import fill_pdf_from_llama
 import tempfile
 
 app = Flask(__name__)
