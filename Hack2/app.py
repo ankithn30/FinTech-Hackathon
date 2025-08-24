@@ -1,9 +1,15 @@
 import os
 import json
+import sys
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, make_response, send_file
 from werkzeug.utils import secure_filename
 from llama_utils import create_dynamic_schema, parse_pdf_with_dynamic_schema
 from pdfwriter import fill_pdf_from_llama
+
+# Add parent directory to path to import llama_parser
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from llama_parser import llama_parse, extract_headers_with_ai
+from schema_utils import compile_schemas, filter_filled_fields
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Change this in production
@@ -43,8 +49,30 @@ def upload_file():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
             
-            # Extract data using dynamic schema based on PDF structure
-            extracted_data = parse_pdf_with_dynamic_schema(filepath)
+            # Try multiple extraction methods
+            extracted_data = {}
+            
+            # Method 1: Extract from PDF form fields (existing method)
+            form_data = parse_pdf_with_dynamic_schema(filepath)
+            
+            # Method 2: Use llama_parser for comprehensive text extraction
+            if not form_data:
+                print("No form fields found, using llama_parser for text extraction...")
+                # Create a simple schema for text extraction
+                text_schema = compile_schemas([
+                    "I want to extract these fields:\nName: Full name of person\nAddress: Complete address\nPhone: Phone number\nEmail: Email address\nAccount Number: Account or reference number\nAmount: Monetary amount\nDate: Any dates mentioned"
+                ])
+                
+                # Use llama_parser to extract structured data
+                parsed_results = llama_parse([filepath], text_schema)
+                if parsed_results:
+                    extracted_data = parsed_results[0].get('extracted_headers', {})
+            else:
+                extracted_data = form_data
+            
+            # Apply filtering to remove empty/placeholder fields
+            if extracted_data:
+                extracted_data = filter_filled_fields(extracted_data)
 
             # Clean up uploaded file
             os.remove(filepath)
@@ -53,7 +81,8 @@ def upload_file():
             response = jsonify({
                 'success': True,
                 'data': extracted_data,
-                'filename': filename
+                'filename': filename,
+                'extraction_method': 'form_fields' if form_data else 'text_extraction'
             })
 
             # Store extracted data in cookies (expires in 1 hour)
@@ -160,5 +189,75 @@ def fill_pdf_form():
             return jsonify({'success': False, 'error': str(e)})
     return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
 
+@app.route('/extract-text', methods=['POST'])
+def extract_text_from_pdf():
+    """Extract text-based information using llama_parser for unstructured documents"""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file uploaded'})
+    
+    file = request.files['file']
+    if file.filename == '' or not allowed_file(file.filename):
+        return jsonify({'success': False, 'error': 'Invalid file'})
+    
+    try:
+        # Save uploaded file temporarily
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Create comprehensive schema for text extraction
+        text_extraction_schema = compile_schemas([
+            """I want to extract these fields:
+            Full Name: Complete name of the person
+            First Name: First name only
+            Last Name: Last name only
+            Street Address: Street address with number
+            City: City name
+            State: State or province
+            ZIP Code: ZIP or postal code
+            Phone Number: Phone number in any format
+            Email Address: Email address
+            Company Name: Company or organization
+            Job Title: Position or title
+            Account Number: Any account or reference numbers
+            Amount: Monetary amounts or balances
+            Date: Any dates mentioned
+            Additional Info: Other relevant information"""
+        ])
+        
+        # Use llama_parser for extraction
+        parsed_results = llama_parse([filepath], text_extraction_schema)
+        
+        extracted_data = {}
+        if parsed_results and len(parsed_results) > 0:
+            result = parsed_results[0]
+            if 'extracted_headers' in result:
+                extracted_data = result['extracted_headers']
+                # Get the actual extracted headers data
+                if 'extracted_headers' in extracted_data:
+                    extracted_data = extracted_data['extracted_headers']
+        
+        # Apply filtering to remove empty fields
+        if extracted_data:
+            extracted_data = filter_filled_fields(extracted_data)
+        
+        # Clean up uploaded file
+        os.remove(filepath)
+        
+        return jsonify({
+            'success': True,
+            'data': extracted_data,
+            'filename': filename,
+            'extraction_method': 'llama_parser_text'
+        })
+        
+    except Exception as e:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5002)

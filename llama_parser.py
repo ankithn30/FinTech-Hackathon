@@ -208,6 +208,28 @@ def check_schema_compliance(ai_extraction: dict, compiled_schema: dict) -> dict:
             "error": str(e)
         }
 
+def simplify_llama_output(llama_results: list[dict]) -> list[dict]:
+    """
+    Converts complex LlamaParser output to simple header: value format
+    """
+    simplified_results = []
+    
+    for result in llama_results:
+        simple_form = {
+            "form_name": os.path.basename(result["form_path"]),
+            "headers": {}
+        }
+        
+        # Extract just the header: value pairs
+        for header in result.get("extracted_headers", {}).get("extracted_headers", []):
+            header_name = header.get("header_name", "")
+            header_value = header.get("extracted_value", "")
+            simple_form["headers"][header_name] = header_value
+        
+        simplified_results.append(simple_form)
+    
+    return simplified_results
+
 if __name__ == "__main__":
     success = test_llama_connection()
     if success:
