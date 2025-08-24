@@ -395,24 +395,34 @@
             // Show the form filler section after successful extraction
             formFillerSection.classList.remove('d-none');
             
-            // Update the data preview in the form filler section
+            // Update the data preview in the form filler section - only show filled fields
             if (data && !Array.isArray(data)) {
-                document.getElementById('previewName').textContent = data.name || 'N/A';
-                document.getElementById('previewPhone').textContent = data.phone_number || 'N/A';
-                document.getElementById('previewAddress').textContent = data.address || 'N/A';
-                document.getElementById('previewEmail').textContent = data.email || 'N/A';
+                document.getElementById('previewName').textContent = (data.name && data.name.trim() && data.name !== 'N/A') ? data.name : '-';
+                document.getElementById('previewPhone').textContent = (data.phone_number && data.phone_number.trim() && data.phone_number !== 'N/A') ? data.phone_number : '-';
+                document.getElementById('previewAddress').textContent = (data.address && data.address.trim() && data.address !== 'N/A') ? data.address : '-';
+                document.getElementById('previewEmail').textContent = (data.email && data.email.trim() && data.email !== 'N/A') ? data.email : '-';
             }
         }
 
         function formatData(data) {
             let html = '<div class="row">';
             for (const [key, value] of Object.entries(data)) {
-                html += `
-                    <div class="col-md-6 mb-2">
-                        <strong>${key}:</strong> 
-                        <span class="ms-2">${Array.isArray(value) ? value.join(', ') : value}</span>
-                    </div>
-                `;
+                // Only show fields that have actual values (not empty, null, or placeholder text)
+                if (value && 
+                    String(value).trim() !== '' && 
+                    String(value).trim() !== 'N/A' && 
+                    String(value).trim() !== 'None' && 
+                    String(value).trim() !== 'NOT_FOUND' && 
+                    String(value).trim() !== 'UNCLEAR' &&
+                    String(value).trim() !== 'null' &&
+                    !(typeof value === 'boolean' && !value)) {
+                    html += `
+                        <div class="col-md-6 mb-2">
+                            <strong>${key}:</strong> 
+                            <span class="ms-2">${Array.isArray(value) ? value.join(', ') : value}</span>
+                        </div>
+                    `;
+                }
             }
             html += '</div>';
             return html;

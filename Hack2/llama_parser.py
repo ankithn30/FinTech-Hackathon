@@ -208,27 +208,80 @@ def check_schema_compliance(ai_extraction: dict, compiled_schema: dict) -> dict:
             "error": str(e)
         }
 
-def simplify_llama_output(llama_results: list[dict]) -> list[dict]:
+def filter_filled_fields(data):
     """
-    Converts complex LlamaParser output to simple header: value format
+    Filters out empty, placeholder, or invalid field values from extracted data
+    This function provides backward compatibility for existing code
     """
-    simplified_results = []
+    if not data:
+        return {}
     
-    for result in llama_results:
-        simple_form = {
-            "form_name": os.path.basename(result["form_path"]),
-            "headers": {}
-        }
-        
-        # Extract just the header: value pairs
-        for header in result.get("extracted_headers", {}).get("extracted_headers", []):
-            header_name = header.get("header_name", "")
-            header_value = header.get("extracted_value", "")
-            simple_form["headers"][header_name] = header_value
-        
-        simplified_results.append(simple_form)
+    filtered_data = {}
     
-    return simplified_results
+    # Handle different data structures
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Skip empty, None, or placeholder values
+            if (value and 
+                str(value).strip() not in ["", " ", "N/A", "None", "NOT_FOUND", "UNCLEAR", "null"]):
+                filtered_data[key] = value
+    elif isinstance(data, list):
+        # If it's a list of dictionaries, filter each one
+        filtered_data = []
+        for item in data:
+            if isinstance(item, dict):
+                filtered_item = filter_filled_fields(item)
+                if filtered_item:  # Only add if there are valid fields
+                    filtered_data.append(filtered_item)
+            else:
+                if item and str(item).strip() not in ["", " ", "N/A", "None", "NOT_FOUND", "UNCLEAR", "null"]:
+                    filtered_data.append(item)
+    
+    return filtered_data
+#Shortcutted with filtering for the ease of display for app.py
+def simplify_llama_output(data) -> dict:
+    """
+    Converts complex data to simple field: value format
+    Only returns fields that have actual values (filters out empty, placeholder values)
+    Works with both LlamaParser results and regular form data
+    """
+    if not data:
+        return {}
+    
+    filtered_headers = {}
+    
+    # Handle LlamaParser results format
+    if isinstance(data, list):
+        result = data[0] if data else {}
+        extracted_headers = result.get("extracted_headers", {})
+        if isinstance(extracted_headers, dict):
+            headers_list = extracted_headers.get("extracted_headers", [])
+        else:
+            headers_list = extracted_headers
+        
+        for header in headers_list:
+            if isinstance(header, dict):
+                header_name = header.get("header_name", "")
+                header_value = header.get("extracted_value", "")
+                confidence = header.get("confidence", "LOW")
+                
+                # Only include headers with actual values
+                if (header_value and 
+                    header_value not in ["NOT_FOUND", "UNCLEAR", "", " ", "N/A", "None", "null"] and
+                    confidence in ["HIGH", "MEDIUM"]):
+                    filtered_headers[header_name] = header_value
+    
+    # Handle regular dictionary data (from form extraction)
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            # Filter out empty, None, or placeholder values
+            if (value and 
+                str(value).strip() not in ["", " ", "N/A", "None", "NOT_FOUND", "UNCLEAR", "null", "mm/dd/yyyy", "Print Form", "Reset Form", "Save Form"] and
+                value is not None and
+                not (isinstance(value, bool) and not value)):
+                filtered_headers[key] = value
+    
+    return filtered_headers
 
 if __name__ == "__main__":
     success = test_llama_connection()

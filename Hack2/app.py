@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from llama_utils import create_dynamic_schema, parse_pdf_with_dynamic_schema
 from pdfwriter import fill_pdf_from_llama
 from schema_utils import compile_schemas
+from llama_parser import simplify_llama_output
 
 # Ensure we can import modules from the repository root (for llama_parser.py)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -71,14 +72,29 @@ def upload_file():
                     )
                     compiled_schema = compile_schemas([schema_text])
                     llama_results = llama_parse([filepath], compiled_schema)
+                    
                     simplified = simplify_llama_output(llama_results)
-                    if simplified and isinstance(simplified, list):
-                        extracted_data = simplified[0].get('headers', {}) or {}
+                    print("=== EXTRACTED DATA (FILLED FIELDS ONLY) ===")
+                    for field, value in simplified.items():
+                        print(f"{field}: {value}")
+                    print("=" * 45)
+                    
+                    if simplified:
+                        extracted_data = simplified
                 except Exception as _inner_e:
+                    print(f"LlamaParser error: {_inner_e}")
                     extracted_data = {}
+            
             # If llama parser unavailable or returned nothing, fall back to form-field extraction
             if not extracted_data:
-                extracted_data = parse_pdf_with_dynamic_schema(filepath)
+                raw_form_data = parse_pdf_with_dynamic_schema(filepath)
+                # Apply simplify_llama_output filtering to form data too
+                extracted_data = simplify_llama_output(raw_form_data)
+                print("=== PDF FORM EXTRACTION RESULTS (FILLED ONLY) ===")
+                for field, value in extracted_data.items():
+                    print(f"{field}: {value}")
+                print("=" * 48)
+            
     
             # Clean up uploaded file
             os.remove(filepath)
@@ -169,6 +185,13 @@ def fill_pdf_form():
     except Exception as e:
         return jsonify({'success': False, 'error': 'Invalid extracted data'})
 
+    # Apply simplification and filtering to the data before filling
+    simplified_data = simplify_llama_output(llama_data) if LLAMA_PARSER_AVAILABLE else llama_data
+    print("=== DATA FOR PDF FILLING ===")
+    for field, value in simplified_data.items():
+        print(f"{field}: {value}")
+    print("=" * 28)
+   
     # Handle uploaded PDF form
     if 'form_pdf' not in request.files:
         return jsonify({'success': False, 'error': 'No PDF form uploaded'})
@@ -181,7 +204,7 @@ def fill_pdf_form():
             form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"form_{filename}")
             form_pdf.save(form_filepath)
             output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"filled_{filename}")
-            success = fill_pdf_from_llama(llama_data, pdf_path=form_filepath, output_path=output_filepath)
+            success = fill_pdf_from_llama(simplified_data, pdf_path=form_filepath, output_path=output_filepath)
             if success:
                 return send_file(output_filepath, as_attachment=True, download_name=f"filled_{filename}", mimetype='application/pdf')
             else:
