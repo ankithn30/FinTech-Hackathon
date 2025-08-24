@@ -17,6 +17,21 @@ class UserInfo(BaseModel):
     option_2: bool = Field(description="Option 2 selected")
     option_3: bool = Field(description="Option 3 selected")
 
+class ContactInfo(BaseModel):
+    """Schema for extracting contact information from text"""
+    full_name: str = Field(description="Complete full name of the person")
+    first_name: str = Field(description="First name only")
+    last_name: str = Field(description="Last name only")
+    street_address: str = Field(description="Street address including number and street name")
+    city: str = Field(description="City name")
+    state: str = Field(description="State or province")
+    zip_code: str = Field(description="ZIP or postal code")
+    phone_number: str = Field(description="Primary phone number")
+    email: str = Field(description="Email address")
+    company: str = Field(description="Company or organization name")
+    job_title: str = Field(description="Job title or position")
+    additional_info: str = Field(description="Any other relevant contact information")
+
 def get_parser():
     if not os.getenv("LLAMA_CLOUD_API_KEY"):
         raise ValueError("LLAMA_CLOUD_API_KEY environment variable not set")
@@ -91,6 +106,57 @@ def create_dynamic_schema(schema_data):
     DynamicSchema = type('DynamicSchema', (BaseModel,), fields)
     return DynamicSchema
 
+def extract_contact_info_from_text(text_content: str) -> Dict[str, Any]:
+    """Extract contact information from large blocks of text using LlamaParse"""
+    try:
+        parser = get_parser()
+        
+        # Use LlamaParse with structured extraction for contact information
+        extraction_result = parser.get_json_result(
+            text_content,
+            result_type="json",
+            parsing_instruction="""
+            Extract contact information from this text. Look for:
+            - Full names (first and last names)
+            - Street addresses (including apartment/suite numbers)
+            - Cities, states, and ZIP codes
+            - Phone numbers (any format)
+            - Email addresses
+            - Company names and job titles
+            - Any other relevant contact details
+            
+            Return the information in a structured JSON format with clear field names.
+            If information is not found, use empty strings for those fields.
+            """
+        )
+        
+        return extraction_result
+    except Exception as e:
+        print(f"Error extracting contact info from text: {e}")
+        return {}
+
+def extract_contact_info_from_pdf(pdf_path: str) -> Dict[str, Any]:
+    """Extract contact information from PDF using LlamaParse text extraction"""
+    try:
+        parser = get_parser()
+        
+        # Parse PDF to extract text content
+        documents = parser.load_data(pdf_path)
+        
+        if not documents:
+            return {}
+        
+        # Combine all text content
+        full_text = "\n".join([doc.text for doc in documents])
+        
+        # Extract contact information from the text
+        contact_info = extract_contact_info_from_text(full_text)
+        
+        return contact_info
+    except Exception as e:
+        print(f"Error extracting contact info from PDF: {e}")
+        return {}
+
 def parse_pdf_with_dynamic_schema(pdf_path: str) -> Dict[str, Any]:
     """Parse a PDF using LlamaParse with a dynamically created schema based on the PDF's form fields"""
     try:
@@ -98,8 +164,10 @@ def parse_pdf_with_dynamic_schema(pdf_path: str) -> Dict[str, Any]:
         # This preserves the actual field values and structure
         extracted_data = extract_pdf_fields_and_values(pdf_path)
         
-        # Note: In future implementations, you could combine this with LlamaParse
-        # to extract text content and map it to form fields for more complex scenarios
+        # If no form fields found, try text extraction for contact info
+        if not extracted_data:
+            print("No form fields found, attempting text extraction...")
+            extracted_data = extract_contact_info_from_pdf(pdf_path)
         
         return extracted_data
     except Exception as e:

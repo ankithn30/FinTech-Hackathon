@@ -20,7 +20,7 @@ def test_llama_connection():
     load_dotenv()
     
     # Check if API key is set
-    api_key = os.getenv("LLAMA_CLOUD_API_KEY")
+    api_key = os.getenv("LLAMA_CLOUD_API_KEY", "llx-q0PGMBAqQup1U0XJlB14P8GrT3aH6uV35IjeeEC3STOHR5ss")
     if not api_key:
         print("✗ LLAMA_CLOUD_API_KEY not found in environment")
         return False
@@ -28,8 +28,8 @@ def test_llama_connection():
     print(f"✓ API key found: {api_key[:10]}...")
     
     try:
-        # Try to initialize the parser
-        parser = LlamaParse()
+        # Try to initialize the parser with API key
+        parser = LlamaParse(api_key=api_key)
         print("✓ LlamaParse initialized successfully")
         
         # Try to list agents (this will test the API connection)
@@ -54,8 +54,8 @@ def llama_parse(form_paths: list[str], compiled_schema: dict) -> list[dict]:
     try:
         print(f"LlamaParser: Processing {len(form_paths)} forms...")
         
-        # Initialize LlamaParse
-        parser = LlamaParse()
+        # Initialize LlamaParse with API key
+        parser = LlamaParse(api_key="llx-q0PGMBAqQup1U0XJlB14P8GrT3aH6uV35IjeeEC3STOHR5ss")
         
         parsed_results = []
         
