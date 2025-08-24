@@ -1,0 +1,23 @@
+{
+  "qa_summary": {
+    "timestamp": "20250824_035704",
+    "processing_time_seconds": 9.215554,
+    "documents_processed": 2,
+    "forms_filled": 0,
+    "fields_discovered": 538,
+    "fields_filled": 0,
+    "fill_rate": 0.0,
+    "error_count": 1,
+    "success_rate": 0.0
+  },
+  "filled_forms": [],
+  "errors": [
+    "Form filling error for Forms/Consumer Loan Application fillable_1-1.pdf: PyMuPDFTemporaryFiller not initialized. Use as context manager."
+  ],
+  "qa_checks": {
+    "over_filling_prevented": true,
+    "targeted_extraction_used": true,
+    "semantic_mapping_applied": true,
+    "field_mappings_saved": true
+  }
+}

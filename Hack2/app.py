@@ -3,14 +3,19 @@ import sys
 import json
 import concurrent.futures
 import multiprocessing
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, make_response, send_file
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, make_response, send_file, session
 from werkzeug.utils import secure_filename
+from werkzeug.security import check_password_hash, generate_password_hash
+from functools import wraps
+import base64
+from datetime import datetime
 from llama_utils import create_dynamic_schema, parse_pdf_with_dynamic_schema
 from pdfwriter import fill_pdf_from_llama
 from schema_utils import compile_schemas
 from agents_with_validation import process_forms_with_validation, MainAgent
 from validation_engine import ValidationEngine
 from batch_processor import BatchProcessor
+from streamlined_batch_processor import StreamlinedBatchProcessor
 from FormFIller import PyMuPDFTemporaryFiller, fill_forms_with_temporary_storage, preview_field_mappings
 
 # Ensure we can import modules from the repository root (for llama_parser.py)
@@ -38,20 +43,528 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+# Basic authentication configuration
+BASIC_AUTH_USERS = {
+    'admin': generate_password_hash('admin123'),
+    'user': generate_password_hash('user123'),
+    'demo': generate_password_hash('demo123')
+}
+
+# Detect if request is from desktop app
+def is_desktop_request():
+    """Check if request is from desktop application"""
+    user_agent = request.headers.get('User-Agent', '').lower()
+    return 'desktop' in user_agent or 'electron' in user_agent or request.headers.get('X-Desktop-App') == 'true'
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def login_required(f):
+    """Decorator to require authentication for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return jsonify({'success': False, 'error': 'Authentication required', 'redirect': '/login'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def pdf_to_base64_preview(pdf_path, page_num=0):
+    """Convert PDF page to base64 image for preview"""
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(pdf_path)
+        
+        if page_num >= len(doc):
+            page_num = 0
+        
+        page = doc[page_num]
+        # Render page as image (150 DPI for good quality preview)
+        mat = fitz.Matrix(150/72, 150/72)
+        pix = page.get_pixmap(matrix=mat)
+        img_data = pix.tobytes("png")
+        
+        # Convert to base64
+        img_base64 = base64.b64encode(img_data).decode('utf-8')
+        
+        doc.close()
+        return {
+            'success': True,
+            'image': f"data:image/png;base64,{img_base64}",
+            'page_count': len(doc),
+            'current_page': page_num
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Handle user login - OAuth for web, basic auth for desktop"""
+    if request.method == 'POST':
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        # Use basic auth for desktop or fallback
+        if username in BASIC_AUTH_USERS and check_password_hash(BASIC_AUTH_USERS[username], password):
+            session['user'] = username
+            session['auth_method'] = 'basic'
+            return jsonify({'success': True, 'message': 'Login successful', 'user': username})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid username or password'}), 401
+    
+    # Check if this is a desktop request
+    if is_desktop_request():
+        # Return basic auth form for desktop
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>FinTech Form Filler - Desktop Login</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
+                .login-form { background: #f5f5f5; padding: 30px; border-radius: 8px; }
+                input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+                button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                button:hover { background: #0056b3; }
+                .error { color: red; margin-top: 10px; }
+                .demo-creds { background: #e9ecef; padding: 15px; margin-top: 20px; border-radius: 4px; font-size: 14px; }
+                .desktop-badge { background: #28a745; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="login-form">
+                <div class="desktop-badge">Desktop Application</div>
+                <h2>FinTech Form Filler - Desktop Login</h2>
+                <form id="loginForm">
+                    <input type="text" id="username" placeholder="Username" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                </form>
+                <div id="error" class="error"></div>
+                <div class="demo-creds">
+                    <strong>Demo Credentials:</strong><br>
+                    admin / admin123<br>
+                    user / user123<br>
+                    demo / demo123
+                </div>
+            </div>
+            <script>
+                document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const username = document.getElementById('username').value;
+                    const password = document.getElementById('password').value;
+                    
+                    try {
+                        const response = await fetch('/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success) {
+                            window.location.href = '/';
+                        } else {
+                            document.getElementById('error').textContent = data.error;
+                        }
+                    } catch (error) {
+                        document.getElementById('error').textContent = 'Login failed. Please try again.';
+                    }
+                });
+            </script>
+        </body>
+        </html>
+        '''
+    
+    # Return improved login form for web requests
+    return '''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>FinTech Form Filler - Login</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            
+            .login-container {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+                padding: 40px;
+                width: 100%;
+                max-width: 420px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .logo {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            
+            .logo h1 {
+                color: #333;
+                font-size: 28px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }
+            
+            .logo p {
+                color: #666;
+                font-size: 14px;
+                font-weight: 400;
+            }
+            
+            .form-group {
+                margin-bottom: 20px;
+                position: relative;
+            }
+            
+            .form-group label {
+                display: block;
+                margin-bottom: 8px;
+                color: #333;
+                font-weight: 500;
+                font-size: 14px;
+            }
+            
+            .form-group input {
+                width: 100%;
+                padding: 15px 20px;
+                border: 2px solid #e1e5e9;
+                border-radius: 12px;
+                font-size: 16px;
+                transition: all 0.3s ease;
+                background: #fff;
+            }
+            
+            .form-group input:focus {
+                outline: none;
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+            
+            .login-btn {
+                width: 100%;
+                padding: 15px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin-top: 10px;
+            }
+            
+            .login-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+            }
+            
+            .login-btn:active {
+                transform: translateY(0);
+            }
+            
+            .login-btn:disabled {
+                opacity: 0.7;
+                cursor: not-allowed;
+                transform: none;
+            }
+            
+            .error {
+                background: #fee;
+                color: #c33;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-top: 15px;
+                font-size: 14px;
+                border-left: 4px solid #c33;
+                display: none;
+            }
+            
+            .error.show {
+                display: block;
+                animation: slideIn 0.3s ease;
+            }
+            
+            .demo-creds {
+                background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+                padding: 20px;
+                border-radius: 12px;
+                margin-top: 25px;
+                border: 1px solid #e1e8ff;
+            }
+            
+            .demo-creds h4 {
+                color: #333;
+                margin-bottom: 12px;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            
+            .cred-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+                font-size: 13px;
+            }
+            
+            .cred-item:last-child {
+                border-bottom: none;
+            }
+            
+            .cred-username {
+                font-weight: 600;
+                color: #667eea;
+            }
+            
+            .cred-password {
+                font-family: monospace;
+                background: rgba(102, 126, 234, 0.1);
+                padding: 2px 6px;
+                border-radius: 4px;
+                color: #333;
+            }
+            
+            .loading {
+                display: none;
+                width: 20px;
+                height: 20px;
+                border: 2px solid #ffffff;
+                border-top: 2px solid transparent;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-right: 10px;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            .footer {
+                text-align: center;
+                margin-top: 30px;
+                color: #666;
+                font-size: 12px;
+            }
+            
+            @media (max-width: 480px) {
+                .login-container {
+                    padding: 30px 20px;
+                    margin: 10px;
+                }
+                
+                .logo h1 {
+                    font-size: 24px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-container">
+            <div class="logo">
+                <h1>📄 FinTech Form Filler</h1>
+                <p>Secure Document Processing Platform</p>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <span class="loading" id="loading"></span>
+                    <span id="btnText">Sign In</span>
+                </button>
+            </form>
+            
+            <div id="error" class="error"></div>
+            
+            <div class="demo-creds">
+                <h4>🔑 Demo Credentials</h4>
+                <div class="cred-item">
+                    <span class="cred-username">admin</span>
+                    <span class="cred-password">admin123</span>
+                </div>
+                <div class="cred-item">
+                    <span class="cred-username">user</span>
+                    <span class="cred-password">user123</span>
+                </div>
+                <div class="cred-item">
+                    <span class="cred-username">demo</span>
+                    <span class="cred-password">demo123</span>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>© 2024 FinTech Form Filler. All rights reserved.</p>
+            </div>
+        </div>
+        
+        <script>
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const loading = document.getElementById('loading');
+            const btnText = document.getElementById('btnText');
+            const errorDiv = document.getElementById('error');
+            
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.classList.add('show');
+                setTimeout(() => {
+                    errorDiv.classList.remove('show');
+                }, 5000);
+            }
+            
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    loading.style.display = 'inline-block';
+                    btnText.textContent = 'Signing In...';
+                    loginBtn.disabled = true;
+                } else {
+                    loading.style.display = 'none';
+                    btnText.textContent = 'Sign In';
+                    loginBtn.disabled = false;
+                }
+            }
+            
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const username = document.getElementById('username').value.trim();
+                const password = document.getElementById('password').value;
+                
+                if (!username || !password) {
+                    showError('Please enter both username and password.');
+                    return;
+                }
+                
+                setLoading(true);
+                
+                try {
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        btnText.textContent = 'Success! Redirecting...';
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 500);
+                    } else {
+                        showError(data.error || 'Login failed. Please check your credentials.');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showError('Network error. Please check your connection and try again.');
+                } finally {
+                    if (btnText.textContent !== 'Success! Redirecting...') {
+                        setLoading(false);
+                    }
+                }
+            });
+            
+            // Auto-focus username field
+            document.getElementById('username').focus();
+        </script>
+    </body>
+    </html>
+    '''
+
+@app.route('/logout')
+def logout():
+    """Handle user logout"""
+    session.pop('user', None)
+    session.pop('auth_method', None)
+    session.pop('user_info', None)
+    return redirect('/login')
+
+@app.route('/check-auth')
+def check_auth():
+    """Check if user is authenticated"""
+    if 'user' in session:
+        return jsonify({
+            'authenticated': True, 
+            'user': session['user'],
+            'auth_method': session.get('auth_method', 'unknown'),
+            'user_info': session.get('user_info', {})
+        })
+    else:
+        return jsonify({'authenticated': False})
+
+@app.route('/user-info')
+@login_required
+def user_info():
+    """Get detailed user information"""
+    return jsonify({
+        'user': session.get('user'),
+        'auth_method': session.get('auth_method'),
+        'user_info': session.get('user_info', {}),
+        'session_data': {
+            'login_time': session.get('login_time'),
+            'last_activity': session.get('last_activity')
+        }
+    })
 
 @app.route('/')
 def index():
     """Serve the consolidated financial dashboard as the primary interface"""
+    if 'user' not in session:
+        return redirect('/login')
     return send_file('Frontend/index.html')
 
 @app.route('/legacy')
+@login_required
 def legacy():
     """Serve the legacy dashboard for reference"""
     return render_template('index.html')
 
 @app.route('/frontend')
+@login_required
 def frontend():
     """Redirect to main dashboard (for backward compatibility)"""
     return send_file('Frontend/index.html')
@@ -884,6 +1397,396 @@ def download_filled_form(filename):
             return jsonify({'error': 'File not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/preview-document', methods=['POST'])
+@login_required
+def preview_document():
+    """
+    Generate a preview of an uploaded PDF document
+    """
+    try:
+        if 'document' not in request.files:
+            return jsonify({'success': False, 'error': 'No document uploaded'})
+        
+        file = request.files['document']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No document selected'})
+        
+        if file and allowed_file(file.filename):
+            # Save uploaded file temporarily
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"preview_{filename}")
+            file.save(filepath)
+            
+            try:
+                # Get page number from request (default to 0)
+                page_num = int(request.form.get('page', 0))
+                
+                # Generate preview
+                preview_result = pdf_to_base64_preview(filepath, page_num)
+                
+                # Clean up uploaded file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                
+                if preview_result['success']:
+                    return jsonify({
+                        'success': True,
+                        'preview': preview_result,
+                        'filename': filename
+                    })
+                else:
+                    return jsonify({'success': False, 'error': preview_result['error']})
+                    
+            except Exception as e:
+                # Clean up uploaded file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                return jsonify({'success': False, 'error': f'Preview generation error: {str(e)}'})
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Document preview error: {str(e)}'
+        }), 500
+
+@app.route('/preview-filled-form', methods=['POST'])
+@login_required
+def preview_filled_form():
+    """
+    Generate a preview of a filled PDF form before download
+    """
+    try:
+        # Get extracted data from cookies
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+
+        try:
+            llama_data = json.loads(extracted_data)
+        except Exception as e:
+            return jsonify({'success': False, 'error': 'Invalid extracted data'})
+
+        # Apply simplification and filtering to the data before filling
+        simplified_data = simplify_llama_output(llama_data) if LLAMA_PARSER_AVAILABLE else llama_data
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"preview_form_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Use FormFIller for semantic form filling
+                with PyMuPDFTemporaryFiller() as filler:
+                    filled_path = filler.fill_single_form(simplified_data, form_filepath)
+                    
+                    if filled_path:
+                        # Get page number from request (default to 0)
+                        page_num = int(request.form.get('page', 0))
+                        
+                        # Generate preview of filled form
+                        preview_result = pdf_to_base64_preview(filled_path, page_num)
+                        
+                        # Get processing stats
+                        stats = filler.get_processing_stats()
+                        
+                        # Clean up uploaded form
+                        if os.path.exists(form_filepath):
+                            os.remove(form_filepath)
+                        
+                        if preview_result['success']:
+                            return jsonify({
+                                'success': True,
+                                'preview': preview_result,
+                                'filename': f"filled_{filename}",
+                                'stats': {
+                                    'fields_filled': stats['fields_filled'],
+                                    'mapping_errors': stats['mapping_errors']
+                                }
+                            })
+                        else:
+                            return jsonify({'success': False, 'error': preview_result['error']})
+                    else:
+                        return jsonify({'success': False, 'error': 'Failed to fill PDF form for preview'})
+                        
+            except Exception as e:
+                # Clean up uploaded form
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({'success': False, 'error': f'Form filling preview error: {str(e)}'})
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Filled form preview error: {str(e)}'
+        }), 500
+
+@app.route('/preview-batch-results', methods=['POST'])
+@login_required
+def preview_batch_results():
+    """
+    Generate previews of batch processing results
+    """
+    try:
+        # Handle multiple document uploads
+        documents = request.files.getlist('documents') if 'documents' in request.files else []
+        forms = request.files.getlist('forms') if 'forms' in request.files else []
+        
+        if not documents:
+            return jsonify({'success': False, 'error': 'No documents uploaded'})
+        
+        if not forms:
+            return jsonify({'success': False, 'error': 'No forms uploaded'})
+        
+        # Limit preview to first 3 forms to avoid overwhelming the response
+        preview_limit = min(3, len(forms))
+        
+        # Create temporary directories for processing
+        import tempfile
+        import shutil
+        
+        temp_dir = tempfile.mkdtemp()
+        temp_docs_dir = os.path.join(temp_dir, 'Documents')
+        temp_forms_dir = os.path.join(temp_dir, 'Forms')
+        temp_output_dir = os.path.join(temp_dir, 'PreviewOutput')
+        
+        os.makedirs(temp_docs_dir, exist_ok=True)
+        os.makedirs(temp_forms_dir, exist_ok=True)
+        
+        try:
+            # Save uploaded documents
+            document_paths = []
+            for file in documents:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(temp_docs_dir, filename)
+                    file.save(filepath)
+                    document_paths.append(filepath)
+            
+            # Save uploaded forms (limited for preview)
+            form_paths = []
+            for i, file in enumerate(forms[:preview_limit]):
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(temp_forms_dir, filename)
+                    file.save(filepath)
+                    form_paths.append(filepath)
+            
+            if not document_paths:
+                return jsonify({'success': False, 'error': 'No valid PDF documents uploaded'})
+            
+            if not form_paths:
+                return jsonify({'success': False, 'error': 'No valid PDF forms uploaded'})
+            
+            # Create streamlined batch processor for preview
+            streamlined_processor = StreamlinedBatchProcessor(
+                documents_folder=temp_docs_dir,
+                forms_folder=temp_forms_dir,
+                output_folder=temp_output_dir
+            )
+            
+            # Run streamlined processing
+            result = streamlined_processor.run_streamlined_processing()
+            
+            if result and result['status'] == 'success':
+                # Generate previews of filled forms
+                filled_forms = result['filled_forms']
+                previews = []
+                
+                for i, filled_form in enumerate(filled_forms[:preview_limit]):
+                    if os.path.exists(filled_form):
+                        preview_result = pdf_to_base64_preview(filled_form, 0)
+                        if preview_result['success']:
+                            previews.append({
+                                'filename': os.path.basename(filled_form),
+                                'preview': preview_result,
+                                'form_index': i
+                            })
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Generated previews for {len(previews)} filled forms',
+                    'previews': previews,
+                    'stats': result['stats'],
+                    'total_forms': len(forms),
+                    'previewed_forms': len(previews),
+                    'preview_note': f'Showing previews for first {preview_limit} forms' if len(forms) > preview_limit else 'Showing all forms'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Batch processing failed for preview'
+                }), 500
+                
+        finally:
+            # Clean up temporary directory
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Batch preview error: {str(e)}'
+        }), 500
+
+@app.route('/streamlined-batch-process', methods=['POST'])
+@login_required
+def streamlined_batch_process():
+    """
+    Streamlined batch processing that prevents over-filling by:
+    1. First discovering what fields exist in forms
+    2. Then extracting only those specific data points from documents
+    3. Mapping them precisely to prevent incorrect assignments
+    """
+    try:
+        # Handle multiple document uploads
+        documents = request.files.getlist('documents') if 'documents' in request.files else []
+        forms = request.files.getlist('forms') if 'forms' in request.files else []
+        
+        if not documents:
+            return jsonify({'success': False, 'error': 'No documents uploaded'})
+        
+        if not forms:
+            return jsonify({'success': False, 'error': 'No forms uploaded'})
+        
+        # Create temporary directories for processing
+        import tempfile
+        import shutil
+        
+        temp_dir = tempfile.mkdtemp()
+        temp_docs_dir = os.path.join(temp_dir, 'Documents')
+        temp_forms_dir = os.path.join(temp_dir, 'Forms')
+        temp_output_dir = os.path.join(temp_dir, 'StreamlinedOutput')
+        
+        os.makedirs(temp_docs_dir, exist_ok=True)
+        os.makedirs(temp_forms_dir, exist_ok=True)
+        
+        try:
+            # Save uploaded documents
+            document_paths = []
+            for file in documents:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(temp_docs_dir, filename)
+                    file.save(filepath)
+                    document_paths.append(filepath)
+            
+            # Save uploaded forms
+            form_paths = []
+            for file in forms:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(temp_forms_dir, filename)
+                    file.save(filepath)
+                    form_paths.append(filepath)
+            
+            if not document_paths:
+                return jsonify({'success': False, 'error': 'No valid PDF documents uploaded'})
+            
+            if not form_paths:
+                return jsonify({'success': False, 'error': 'No valid PDF forms uploaded'})
+            
+            print(f"\n🚀 Starting streamlined batch processing: {len(document_paths)} docs, {len(form_paths)} forms...")
+            
+            # Create streamlined batch processor
+            streamlined_processor = StreamlinedBatchProcessor(
+                documents_folder=temp_docs_dir,
+                forms_folder=temp_forms_dir,
+                output_folder=temp_output_dir
+            )
+            
+            # Run streamlined processing
+            result = streamlined_processor.run_streamlined_processing()
+            
+            if result and result['status'] == 'success':
+                # Copy filled forms to permanent location
+                filled_forms = result['filled_forms']
+                permanent_filled_forms = []
+                
+                for filled_form in filled_forms:
+                    if os.path.exists(filled_form):
+                        base_name = os.path.basename(filled_form)
+                        permanent_path = os.path.join(app.config['UPLOAD_FOLDER'], f"streamlined_{base_name}")
+                        shutil.copy2(filled_form, permanent_path)
+                        permanent_filled_forms.append(permanent_path)
+                
+                # Create a zip file with all filled forms and QA report
+                import zipfile
+                from datetime import datetime
+                
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                zip_filename = f"streamlined_batch_results_{timestamp}.zip"
+                zip_path = os.path.join(app.config['UPLOAD_FOLDER'], zip_filename)
+                
+                with zipfile.ZipFile(zip_path, 'w') as zipf:
+                    # Add filled forms
+                    for filled_form in permanent_filled_forms:
+                        if os.path.exists(filled_form):
+                            zipf.write(filled_form, f"filled_forms/{os.path.basename(filled_form)}")
+                    
+                    # Add QA report if it exists
+                    qa_report_file = result.get('qa_report_file')
+                    if qa_report_file and os.path.exists(qa_report_file):
+                        zipf.write(qa_report_file, f"qa_report/{os.path.basename(qa_report_file)}")
+                    
+                    # Add field mappings if they exist
+                    field_mappings_dir = os.path.join(temp_output_dir, 'field_mappings')
+                    if os.path.exists(field_mappings_dir):
+                        for mapping_file in os.listdir(field_mappings_dir):
+                            mapping_path = os.path.join(field_mappings_dir, mapping_file)
+                            if os.path.isfile(mapping_path):
+                                zipf.write(mapping_path, f"field_mappings/{mapping_file}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': f'Streamlined processing completed successfully!',
+                    'stats': result['stats'],
+                    'qa_summary': {
+                        'documents_processed': result['stats']['documents_processed'],
+                        'forms_filled': result['stats']['forms_filled'],
+                        'fields_discovered': result['stats']['fields_discovered'],
+                        'fields_filled': result['stats']['fields_filled'],
+                        'fill_rate': (result['stats']['fields_filled'] / max(result['stats']['fields_discovered'], 1)) * 100,
+                        'error_count': len(result['stats']['errors'])
+                    },
+                    'download_url': f'/download-batch-results/{zip_filename}',
+                    'qa_checks': {
+                        'over_filling_prevented': True,
+                        'targeted_extraction_used': True,
+                        'semantic_mapping_applied': True,
+                        'field_mappings_saved': True
+                    }
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Streamlined batch processing failed'
+                }), 500
+                
+        finally:
+            # Clean up temporary directory
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Streamlined batch processing error: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002)

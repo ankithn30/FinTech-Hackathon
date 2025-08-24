@@ -1,0 +1,26 @@
+{
+  "qa_summary": {
+    "timestamp": "20250824_052432",
+    "processing_time_seconds": 15.393698,
+    "documents_processed": 3,
+    "forms_filled": 2,
+    "fields_discovered": 538,
+    "fields_filled": 47,
+    "fill_rate": 8.736059479553903,
+    "error_count": 1,
+    "success_rate": 66.66666666666666
+  },
+  "filled_forms": [
+    "RealTestOutput/filled_forms/filled_i-9-1_20250824_052432.pdf",
+    "RealTestOutput/filled_forms/filled_F2_20250824_052432.pdf"
+  ],
+  "errors": [
+    "Form filling error for Forms/Consumer Loan Application fillable_1-1.pdf: [Errno 2] No such file or directory: '/var/folders/mc/mlc75q3s5mv3hz6gzl7kx47m0000gn/T/pdf_filler_4m2d9n6f/filled_Consumer Loan Application fillable_1-1_0.pdf'"
+  ],
+  "qa_checks": {
+    "over_filling_prevented": true,
+    "targeted_extraction_used": true,
+    "semantic_mapping_applied": true,
+    "field_mappings_saved": true
+  }
+}

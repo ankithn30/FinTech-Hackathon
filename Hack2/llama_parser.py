@@ -20,7 +20,7 @@ def test_llama_connection():
     load_dotenv()
     
     # Check if API key is set
-    api_key = os.getenv("LLAMA_CLOUD_API_KEY", "llx-q0PGMBAqQup1U0XJlB14P8GrT3aH6uV35IjeeEC3STOHR5ss")
+    api_key = os.getenv("LLAMA_CLOUD_API_KEY")
     if not api_key:
         print("✗ LLAMA_CLOUD_API_KEY not found in environment")
         return False
@@ -54,8 +54,17 @@ def llama_parse(form_paths: list[str], compiled_schema: dict) -> list[dict]:
     try:
         print(f"LlamaParser: Processing {len(form_paths)} forms...")
         
-        # Initialize LlamaParse with API key
-        parser = LlamaParse(api_key="llx-q0PGMBAqQup1U0XJlB14P8GrT3aH6uV35IjeeEC3STOHR5ss")
+        # Load environment variables
+        load_dotenv()
+        
+        # Get API key from environment
+        api_key = os.getenv("LLAMA_CLOUD_API_KEY")
+        if not api_key:
+            print("LlamaParser Error: LLAMA_CLOUD_API_KEY not found in environment")
+            return []
+        
+        # Initialize LlamaParse with API key from environment
+        parser = LlamaParse(api_key=api_key)
         
         parsed_results = []
         
@@ -63,8 +72,18 @@ def llama_parse(form_paths: list[str], compiled_schema: dict) -> list[dict]:
             print(f"LlamaParser: Parsing document: {os.path.basename(form_path)}")
             
             # Step 1: Parse the document using LlamaCloud to extract raw text/data
-            parsed_document = parser.parse_document(form_path)
-            print(f"LlamaParser: Document parsed successfully, extracted {len(str(parsed_document))} characters")
+            parsed_documents = parser.load_data(form_path)
+            
+            # Extract text content from Document objects
+            if parsed_documents:
+                # Get the text content from the first document
+                document = parsed_documents[0]
+                parsed_text = document.text if hasattr(document, 'text') else str(document)
+                parsed_document = {"text": parsed_text, "metadata": getattr(document, 'metadata', {})}
+            else:
+                parsed_document = {"text": "", "metadata": {}}
+            
+            print(f"LlamaParser: Document parsed successfully, extracted {len(parsed_document.get('text', ''))} characters")
             
             # Step 2: Pass parsed document data and schema to AI Agent for header extraction
             ai_extraction = extract_headers_with_ai(parsed_document, compiled_schema)

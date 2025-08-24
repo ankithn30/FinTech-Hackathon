@@ -1,0 +1,13 @@
+{
+  "form": "F2.pdf",
+  "fields_filled": 5,
+  "total_fields": 167,
+  "data_used": {
+    "form1[0].#subform[1].prevrepaddressstatezip[0]": "Employee",
+    "form1[0].#subform[3].accountholdername2[0]": "and address",
+    "form1[0].#subform[3].accountholdername1[0]": "and address",
+    "form1[0].#subform[1].prevrepaddress[0]": "Employee",
+    "form1[0].#subform[3].accountholdername3[0]": "and address"
+  },
+  "timestamp": "20250824_052432"
+}

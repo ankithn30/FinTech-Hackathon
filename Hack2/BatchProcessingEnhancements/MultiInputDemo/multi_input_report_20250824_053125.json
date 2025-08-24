@@ -1,0 +1,43 @@
+{
+  "multi_input_summary": {
+    "timestamp": "20250824_053125",
+    "processing_time_seconds": 32.383887,
+    "document_sources": 2,
+    "form_sources": 1,
+    "total_documents_processed": 7,
+    "total_forms_filled": 4,
+    "total_fields_discovered": 538,
+    "total_fields_filled": 538,
+    "combined_data_points": 82,
+    "error_count": 0,
+    "success_rate": 100.0
+  },
+  "document_sources": {
+    "documents": {
+      "type": "mixed",
+      "file_count": 3
+    },
+    "forms_as_docs": {
+      "type": "mixed",
+      "file_count": 4
+    }
+  },
+  "form_sources": {
+    "primary_forms": {
+      "file_count": 4
+    }
+  },
+  "filled_forms": [
+    "MultiInputDemo/filled_forms/filled_fw4-1_20250824_053123.pdf",
+    "MultiInputDemo/filled_forms/filled_i-9-1_20250824_053123.pdf",
+    "MultiInputDemo/filled_forms/filled_F2_20250824_053123.pdf",
+    "MultiInputDemo/filled_forms/filled_Consumer Loan Application fillable_1-1_20250824_053123.pdf"
+  ],
+  "errors": [],
+  "processing_checks": {
+    "multi_source_processing": true,
+    "intelligent_data_combination": true,
+    "priority_based_merging": true,
+    "comprehensive_form_filling": true
+  }
+}

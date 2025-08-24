@@ -8,7 +8,7 @@ let mainWindow;
 let flaskProcess;
 
 // Flask server configuration
-const FLASK_PORT = 5001;
+const FLASK_PORT = 5002;
 const FLASK_HOST = 'localhost';
 
 function createWindow() {

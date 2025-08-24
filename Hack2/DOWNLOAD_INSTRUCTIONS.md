@@ -8,7 +8,7 @@
 ### For Your Current Mac:
 1. **Open Finder and navigate to:**
    ```
-   /Users/ankithnagabandi/Downloads/FinTech-Hackathon/Hack2/dist/
+   /Users/useer/Downloads/FinTech-Hackathon/Hack2/dist/
    ```
 
 2. **Choose the right file for your Mac:**

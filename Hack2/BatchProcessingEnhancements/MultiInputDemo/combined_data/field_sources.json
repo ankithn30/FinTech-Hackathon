@@ -1,0 +1,412 @@
+{
+  "Signature4_es_:signer:signature": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Preparer or Translator 3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Employer Self Employed_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_6": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Address (Street Number and Name) 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Employer Self Employed_5": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Address (Street Number and Name) 3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Preparer or Translator 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Emp Rep 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Address (Street Number and Name) 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Employer Self Employed_4": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Mailing Address if different from Present Address_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Employers Business or Org Name": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "form1[0].#subform[1].prevrepaddress[0]": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Address (Street Number and Name) 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Employers Business or Org Address": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "form1[0].#subform[1].prevrepaddressstatezip[0]": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature5_es_:signer:signature": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Address Street Number and Name": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_9": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Emp Rep 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Former Address street city state ZIP from to_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Emp Rep 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Preparer or Translator 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_7": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Institution_4": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Preparer or Translator 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Present Address street city state ZIP since": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Present Address street city state ZIP since_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_5": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_4": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Former Address street city state ZIP from to": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Employee": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Institution_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Signature of Employer or AR": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Employees E-mail Address": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Employer Self Employed": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Institution_5": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Email Address": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Company_8": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name First Name and Title of Employer or Authorized Representative": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Institution": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Institution_3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Employer Self Employed_6": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name  Address of Employer Self Employed_3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Mailing Address if different from Present Address": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Email Address_2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "CoApplicant Name include Jr or Sr if applicable": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "form1[0].#subform[3].accountholdername2[0]": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name (Family Name)": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name of Emp or Auth Rep 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator First Name (Given Name) 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "form1[0].#subform[3].accountholdername3[0]": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Employee Other Last Names Used (if any)": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "First Name 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "form1[0].#subform[3].accountholdername1[0]": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Last Name (Family Name) 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name of Emp or Auth Rep 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name Family Name from Section 1-2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Financial Institution Name": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Name of Emp or Auth Rep 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator First Name (Given Name) 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Last Name (Family Name) 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Last Name (Family Name) 3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator Last Name (Family Name) 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Applicant Name include Jr or Sr if applicable": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "First Name 0": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "First Name Given Name from Section 1-2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "First Name Given Name from Section 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Last Name Family Name from Section 1": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Preparer or Translator First Name (Given Name) 3": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "First Name 2": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "First Name Given Name": {
+    "source": "documents",
+    "priority": 7,
+    "type": "mixed"
+  },
+  "Married": {
+    "source": "forms_as_docs",
+    "priority": 6,
+    "type": "mixed"
+  },
+  "Other Income": {
+    "source": "forms_as_docs",
+    "priority": 6,
+    "type": "mixed"
+  },
+  "Joint": {
+    "source": "forms_as_docs",
+    "priority": 6,
+    "type": "mixed"
+  }
+}

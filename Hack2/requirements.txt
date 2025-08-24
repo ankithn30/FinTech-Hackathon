@@ -7,3 +7,5 @@ reportlab
 streamlit
 anthropic
 PyMuPDF
+pdfrw
+llama-parse
