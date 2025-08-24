@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financial Document Processing System</title>
+    <title>FIFA: Financial Form Filling Agent</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
@@ -737,6 +737,206 @@
             display: none;
         }
 
+        /* Edit Form Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .edit-modal {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80%;
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .edit-modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        .modal-content {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .edit-section {
+            margin-bottom: 25px;
+        }
+
+        .edit-section h3 {
+            color: #1e40af;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .field-editor {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .field-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .modal-actions {
+            padding: 20px 30px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            background: #f8fafc;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .modal-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            color: white;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(30, 64, 175, 0.3);
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        .edit-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+
+        .edit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         @media (max-width: 768px) {
             .upload-grid {
                 grid-template-columns: 1fr;
@@ -753,6 +953,25 @@
             
             .workflow-step {
                 padding: 20px;
+            }
+
+            .preview-modal {
+                width: 95%;
+                height: 95%;
+            }
+
+            .modal-content {
+                flex-direction: column;
+            }
+
+            .preview-panel {
+                flex: 1;
+            }
+
+            .edit-panel {
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid rgba(0, 0, 0, 0.1);
             }
         }
     </style>
@@ -777,8 +996,8 @@
 
     <div class="container">
         <div class="header">
-            <h1>Financial Document Processing System</h1>
-            <p>Comprehensive AI-powered document processing and form filling for financial institutions</p>
+            <h1>FIFA: Financial Form Filling Agent</h1>
+            <p>An AI Form Filling Tool</p>
         </div>
         
         <div class="workflow-sections">
@@ -890,6 +1109,28 @@
                 
                 <div id="batchStatusMessage"></div>
                 <div class="security-badge">Enterprise-grade processing</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Edit Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="edit-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Edit Form Fields</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="edit-section">
+                    <h3>📝 Edit Form Fields</h3>
+                    <div id="fieldEditors">
+                        <!-- Field editors will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn btn-download" id="downloadFinalForm">📥 Fill & Download Form</button>
+                <button class="modal-btn btn-cancel" id="cancelEdit">Cancel</button>
             </div>
         </div>
     </div>
@@ -1431,6 +1672,198 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+        }
+
+        // Edit Modal Functions
+        let currentFormData = null;
+        let currentFormFile = null;
+
+        // Modal elements
+        const editModal = document.getElementById('editModal');
+        const closeModal = document.getElementById('closeModal');
+        const fieldEditors = document.getElementById('fieldEditors');
+        const downloadFinalForm = document.getElementById('downloadFinalForm');
+        const cancelEdit = document.getElementById('cancelEdit');
+
+        // Modal event listeners
+        closeModal.addEventListener('click', closeEditModal);
+        cancelEdit.addEventListener('click', closeEditModal);
+        downloadFinalForm.addEventListener('click', downloadEditedForm);
+
+        // Close modal when clicking outside
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) {
+                closeEditModal();
+            }
+        });
+
+        // Updated fillSelectedForms function to show edit modal for single forms
+        function fillSelectedForms() {
+            if (!extractedData || selectedForms.length === 0) return;
+            
+            if (selectedForms.length === 1) {
+                // Single form - show edit modal
+                currentFormFile = selectedForms[0];
+                currentFormData = { ...extractedData };
+                showEditModal();
+            } else {
+                // Multiple forms - proceed with original behavior
+                const formData = new FormData();
+                selectedForms.forEach(file => {
+                    formData.append('forms', file);
+                });
+                
+                showProgress(formProgressBar, formProgressFill);
+                showStatus(formStatusMessage, `Filling ${selectedForms.length} forms...`, 'info');
+                
+                fetch('/fill-multiple-forms-single', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideProgress(formProgressBar);
+                    if (data.success) {
+                        showStatus(formStatusMessage, `✅ Successfully filled ${data.filled_forms_count} forms! Downloading ZIP...`, 'success');
+                        if (data.download_url) {
+                            window.location.href = data.download_url;
+                        }
+                    } else {
+                        showStatus(formStatusMessage, `❌ Error: ${data.error}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    hideProgress(formProgressBar);
+                    showStatus(formStatusMessage, `❌ Error: ${error.message}`, 'error');
+                });
+            }
+        }
+
+        function showEditModal() {
+            // Show modal
+            editModal.classList.add('show');
+            
+            // Generate field editors
+            generateFieldEditors();
+        }
+
+        function generateFieldEditors() {
+            fieldEditors.innerHTML = '';
+            
+            if (!currentFormData) return;
+            
+            Object.entries(currentFormData).forEach(([key, value]) => {
+                const fieldEditor = document.createElement('div');
+                fieldEditor.className = 'field-editor';
+                
+                fieldEditor.innerHTML = `
+                    <div class="field-label">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+                    <input type="text" class="field-input" data-field="${key}" value="${value || ''}" placeholder="Enter ${key.replace(/_/g, ' ')}">
+                `;
+                
+                fieldEditors.appendChild(fieldEditor);
+            });
+            
+            // Add event listeners to field inputs
+            const fieldInputs = fieldEditors.querySelectorAll('.field-input');
+            fieldInputs.forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const fieldName = e.target.dataset.field;
+                    currentFormData[fieldName] = e.target.value;
+                });
+            });
+        }
+
+        function downloadEditedForm() {
+            if (!currentFormFile || !currentFormData) return;
+            
+            const formData = new FormData();
+            formData.append('form_pdf', currentFormFile);
+            
+            // Add current form data as JSON
+            formData.append('form_data', JSON.stringify(currentFormData));
+            
+            downloadFinalForm.disabled = true;
+            downloadFinalForm.textContent = 'Generating...';
+            
+            fetch('/fill-edited-form', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                } else {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Form generation failed');
+                    });
+                }
+            })
+            .then(blob => {
+                downloadBlob(blob, `edited_${currentFormFile.name}`);
+                closeEditModal();
+                showStatus(formStatusMessage, '✅ Form downloaded successfully!', 'success');
+            })
+            .catch(error => {
+                showStatus(formStatusMessage, `❌ Error: ${error.message}`, 'error');
+            })
+            .finally(() => {
+                downloadFinalForm.disabled = false;
+                downloadFinalForm.textContent = '📥 Fill & Download Form';
+            });
+        }
+
+        function closeEditModal() {
+            editModal.classList.remove('show');
+            currentFormData = null;
+            currentFormFile = null;
+        }
+
+        // Updated createFileItem function to add edit button for single forms
+        function createFileItem(file, type) {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.innerHTML = `
+                <div class="file-name">${file.name}</div>
+                <div class="file-size">${formatFileSize(file.size)}</div>
+            `;
+            
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.gap = '10px';
+            
+            // Add edit button for single forms when data is available
+            if (type === 'form' && extractedData && selectedForms.length === 1) {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn';
+                editBtn.textContent = '✏️ Edit';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    currentFormFile = file;
+                    currentFormData = { ...extractedData };
+                    showEditModal();
+                };
+                buttonContainer.appendChild(editBtn);
+            }
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-file';
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = () => {
+                fileItem.remove();
+                if (type === 'data') {
+                    extractDataBtn.disabled = true;
+                }
+                updateButtonStates();
+            };
+            buttonContainer.appendChild(removeBtn);
+            
+            fileItem.appendChild(fileInfo);
+            fileItem.appendChild(buttonContainer);
+            
+            return fileItem;
         }
     </script>
 </body>

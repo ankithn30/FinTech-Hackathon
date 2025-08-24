@@ -26,15 +26,14 @@ class TemporarySemanticMapper:
     def __init__(self):
         self.session_fields: Dict[str, Dict[str, Any]] = {}  # {form_hash: {field_name: metadata}}
         self.semantic_cache: Dict[str, str] = {}  # {extracted_key: best_field_name}
-        self.similarity_threshold = 0.6  # More flexible similarity for better matching
-        self.strict_matching = True  # Only fill fields with exclusive matches
+        self.similarity_threshold = 0.6
         
         # Common field name patterns for better matching
         self.field_patterns = {
-            'phone': ['phone', 'telephone', 'tel', 'mobile', 'cell', 'contact', 'number'],
+            'phone': ['phone', 'telephone', 'tel', 'mobile', 'cell', 'contact'],
             'ssn': ['ssn', 'social', 'security', 'social_security', 'ss_number'],
-            'name': ['name', 'full_name', 'first_name', 'last_name', 'fname', 'lname', 'employee', 'applicant'],
-            'address': ['address', 'street', 'addr', 'location', 'residence', 'home'],
+            'name': ['name', 'full_name', 'first_name', 'last_name', 'fname', 'lname'],
+            'address': ['address', 'street', 'addr', 'location', 'residence'],
             'email': ['email', 'e_mail', 'mail', 'electronic_mail'],
             'date': ['date', 'birth_date', 'dob', 'birthday', 'born'],
             'zip': ['zip', 'postal', 'zipcode', 'postal_code'],
@@ -42,8 +41,7 @@ class TemporarySemanticMapper:
             'city': ['city', 'town', 'municipality'],
             'employer': ['employer', 'company', 'work', 'job', 'employment'],
             'income': ['income', 'salary', 'wage', 'earnings', 'pay'],
-            'signature': ['signature', 'sign', 'signed', 'autograph'],
-            'id': ['id', 'identification', 'employee_id', 'emp_id', 'number']
+            'signature': ['signature', 'sign', 'signed', 'autograph']
         }
     
     def _generate_form_hash(self, form_path: str) -> str:
@@ -126,8 +124,7 @@ class TemporarySemanticMapper:
     
     def semantic_match(self, extracted_key: str, available_fields: List[str]) -> Optional[str]:
         """
-        Find the best matching field name using strict semantic similarity.
-        Only returns matches with very high confidence to prevent incorrect assignments.
+        Find the best matching field name using semantic similarity.
         Returns field name with similarity score > threshold, or None.
         """
         if not extracted_key or not available_fields:
@@ -140,84 +137,53 @@ class TemporarySemanticMapper:
         
         best_match = None
         best_score = 0.0
-        second_best_score = 0.0
         
         extracted_normalized = self._normalize_field_name(extracted_key)
-        extracted_lower = extracted_key.lower()
         
-        # Try exact match first (highest priority)
+        # Try exact match first
         for field_name in available_fields:
             if extracted_normalized == self._normalize_field_name(field_name):
                 best_match = field_name
                 best_score = 1.0
                 break
         
-        # If no exact match, try strict pattern matching
-        if not best_match and self.strict_matching:
-            # Check against known patterns with strict requirements
+        # If no exact match, try pattern matching
+        if not best_match:
+            extracted_lower = extracted_key.lower()
+            
+            # Check against known patterns
             for pattern_key, pattern_words in self.field_patterns.items():
-                # Only proceed if extracted key strongly indicates this pattern
-                extracted_pattern_matches = sum(1 for word in pattern_words if word in extracted_lower)
-                if extracted_pattern_matches == 0:
-                    continue
-                
-                # Find fields that match this pattern
-                for field_name in available_fields:
-                    field_lower = field_name.lower()
-                    field_pattern_matches = sum(1 for word in pattern_words if word in field_lower)
-                    
-                    if field_pattern_matches > 0:
-                        # Calculate strict similarity score
-                        score = difflib.SequenceMatcher(None, extracted_lower, field_lower).ratio()
-                        
-                        # Additional boost for pattern matches
-                        pattern_boost = min(extracted_pattern_matches, field_pattern_matches) * 0.1
-                        score += pattern_boost
-                        
-                        if score > best_score:
-                            second_best_score = best_score
-                            best_score = score
-                            best_match = field_name
-                        elif score > second_best_score:
-                            second_best_score = score
+                if any(word in extracted_lower for word in pattern_words):
+                    # Find fields that match this pattern
+                    for field_name in available_fields:
+                        field_lower = field_name.lower()
+                        if any(word in field_lower for word in pattern_words):
+                            score = difflib.SequenceMatcher(None, extracted_lower, field_lower).ratio()
+                            if score > best_score and score > self.similarity_threshold:
+                                best_match = field_name
+                                best_score = score
         
-        # If still no match, try very strict general similarity matching
+        # If still no match, try general similarity matching
         if not best_match:
             for field_name in available_fields:
                 score = difflib.SequenceMatcher(None, extracted_normalized, 
                                               self._normalize_field_name(field_name)).ratio()
-                if score > best_score:
-                    second_best_score = best_score
-                    best_score = score
+                if score > best_score and score > self.similarity_threshold:
                     best_match = field_name
-                elif score > second_best_score:
-                    second_best_score = score
-        
-        # Apply strict matching criteria
-        if self.strict_matching and best_match:
-            # Require very high similarity threshold
-            if best_score < self.similarity_threshold:
-                logger.info(f"Rejecting match '{extracted_key}' -> '{best_match}' (score {best_score:.3f} < threshold {self.similarity_threshold})")
-                best_match = None
-            
-            # Ensure the match is significantly better than alternatives (exclusive matching)
-            elif second_best_score > 0 and (best_score - second_best_score) < 0.2:
-                logger.info(f"Rejecting ambiguous match '{extracted_key}' -> '{best_match}' (best: {best_score:.3f}, second: {second_best_score:.3f})")
-                best_match = None
+                    best_score = score
         
         # Cache the result
         if best_match:
             self.semantic_cache[cache_key] = best_match
-            logger.info(f"Strict semantic match: '{extracted_key}' -> '{best_match}' (score: {best_score:.3f})")
+            logger.debug(f"Semantic match: '{extracted_key}' -> '{best_match}' (score: {best_score:.3f})")
         else:
-            logger.info(f"No exclusive match found for '{extracted_key}' - leaving unfilled for safety")
+            logger.warning(f"No semantic match found for '{extracted_key}' in available fields")
         
         return best_match
     
     def map_data_to_fields(self, extracted_data: Dict[str, Any], form_path: str) -> Dict[str, Any]:
         """
-        Maps extracted data to actual form field names using flexible semantic matching.
-        For preview functionality, we'll be more permissive to show something useful.
+        Maps extracted data to actual form field names using semantic matching.
         
         Takes: {"Phone": "313-478-9080", "SSN": "123-45-6789"}
         Returns: {"Phone_Number_1": "313-478-9080", "SSN_Field": "123-45-6789"}
@@ -236,50 +202,28 @@ class TemporarySemanticMapper:
         mapped_data = {}
         unmapped_keys = []
         
-        logger.info(f"FLEXIBLE MATCHING: Processing {len(extracted_data)} data keys against {len(available_field_names)} form fields")
-        logger.info(f"Available form fields: {available_field_names[:5]}..." if len(available_field_names) > 5 else f"Available form fields: {available_field_names}")
-        logger.info(f"Extracted data keys: {list(extracted_data.keys())}")
+        logger.info(f"Mapping {len(extracted_data)} data keys to {len(available_field_names)} form fields")
         
-        # For preview purposes, if strict matching fails, try simple sequential mapping
-        strict_matches = {}
+        # Map each extracted data key to a form field
         for extracted_key, value in extracted_data.items():
             if not extracted_key or value is None:
                 continue
             
-            # Try strict matching first
+            # Find best matching field
             matched_field = self.semantic_match(extracted_key, available_field_names)
             
             if matched_field:
-                strict_matches[matched_field] = str(value)
-                logger.info(f"✅ STRICT MATCH: '{extracted_key}' -> '{matched_field}' = '{value}'")
+                # Convert value to string for PDF form compatibility
+                mapped_data[matched_field] = str(value)
+                logger.debug(f"Mapped: {extracted_key} -> {matched_field} = '{value}'")
+            else:
+                unmapped_keys.append(extracted_key)
+                logger.warning(f"Could not map key: {extracted_key}")
         
-        # If we got good strict matches, use them
-        if len(strict_matches) >= len(extracted_data) * 0.5:  # At least 50% match rate
-            mapped_data = strict_matches
-        else:
-            # Fall back to simple sequential mapping for preview purposes
-            logger.info("🔄 Falling back to sequential mapping for preview...")
-            data_items = list(extracted_data.items())
-            
-            # Try to map to the first few available fields for preview
-            for i, (extracted_key, value) in enumerate(data_items):
-                if i < len(available_field_names) and value is not None:
-                    field_name = available_field_names[i]
-                    mapped_data[field_name] = str(value)
-                    logger.info(f"📝 PREVIEW MAP: '{extracted_key}' -> '{field_name}' = '{value}'")
-                else:
-                    unmapped_keys.append(extracted_key)
-        
-        # Log final mapping results
-        logger.info(f"MAPPING RESULTS:")
-        logger.info(f"  ✅ Fields filled: {len(mapped_data)}")
-        logger.info(f"  ❌ Fields skipped: {len(unmapped_keys)}")
-        logger.info(f"  📊 Fill rate: {len(mapped_data)}/{len(extracted_data)} ({(len(mapped_data)/len(extracted_data)*100):.1f}%)")
-        
-        if mapped_data:
-            logger.info(f"  Filled fields: {list(mapped_data.keys())[:3]}..." if len(mapped_data) > 3 else f"  Filled fields: {list(mapped_data.keys())}")
+        # Log mapping results
+        logger.info(f"Successfully mapped {len(mapped_data)} fields, {len(unmapped_keys)} unmapped")
         if unmapped_keys:
-            logger.info(f"  Skipped keys: {unmapped_keys}")
+            logger.warning(f"Unmapped keys: {unmapped_keys}")
         
         return mapped_data
     

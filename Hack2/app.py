@@ -119,7 +119,7 @@ def login():
         <!DOCTYPE html>
         <html>
         <head>
-            <title>FinTech Form Filler - Desktop Login</title>
+            <title>FIFA: Financial Form Filling Agent - Desktop Login</title>
             <style>
                 body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
                 .login-form { background: #f5f5f5; padding: 30px; border-radius: 8px; }
@@ -134,7 +134,7 @@ def login():
         <body>
             <div class="login-form">
                 <div class="desktop-badge">Desktop Application</div>
-                <h2>FinTech Form Filler - Desktop Login</h2>
+                <h2>FIFA: Financial Form Filling Agent - Desktop Login</h2>
                 <form id="loginForm">
                     <input type="text" id="username" placeholder="Username" required>
                     <input type="password" id="password" placeholder="Password" required>
@@ -183,7 +183,7 @@ def login():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>FinTech Form Filler - Login</title>
+        <title>FIFA: Financial Form Filling Agent - Login</title>
         <style>
             * {
                 margin: 0;
@@ -394,7 +394,7 @@ def login():
     <body>
         <div class="login-container">
             <div class="logo">
-                <h1>📄 FinTech Form Filler</h1>
+                <h1>📄 FIFA: Financial Form Filling Agent</h1>
                 <p>Secure Document Processing Platform</p>
             </div>
             
@@ -434,7 +434,7 @@ def login():
             </div>
             
             <div class="footer">
-                <p>© 2024 FinTech Form Filler. All rights reserved.</p>
+                <p>© 2024 FIFA: Financial Form Filling Agent. All rights reserved.</p>
             </div>
         </div>
         
@@ -1452,89 +1452,6 @@ def preview_document():
             'error': f'Document preview error: {str(e)}'
         }), 500
 
-@app.route('/preview-filled-form', methods=['POST'])
-@login_required
-def preview_filled_form():
-    """
-    Generate a preview of a filled PDF form before download
-    """
-    try:
-        # Get extracted data from cookies
-        extracted_data = request.cookies.get('extracted_data')
-        has_data = request.cookies.get('has_data')
-
-        if not has_data or not extracted_data:
-            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
-
-        try:
-            llama_data = json.loads(extracted_data)
-        except Exception as e:
-            return jsonify({'success': False, 'error': 'Invalid extracted data'})
-
-        # Apply simplification and filtering to the data before filling
-        simplified_data = simplify_llama_output(llama_data) if LLAMA_PARSER_AVAILABLE else llama_data
-        
-        # Handle form upload
-        if 'form_pdf' not in request.files:
-            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
-        
-        form_pdf = request.files['form_pdf']
-        if form_pdf.filename == '':
-            return jsonify({'success': False, 'error': 'No PDF form selected'})
-        
-        if form_pdf and allowed_file(form_pdf.filename):
-            filename = secure_filename(form_pdf.filename)
-            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"preview_form_{filename}")
-            form_pdf.save(form_filepath)
-            
-            try:
-                # Use FormFIller for semantic form filling
-                with PyMuPDFTemporaryFiller() as filler:
-                    filled_path = filler.fill_single_form(simplified_data, form_filepath)
-                    
-                    if filled_path:
-                        # Get page number from request (default to 0)
-                        page_num = int(request.form.get('page', 0))
-                        
-                        # Generate preview of filled form
-                        preview_result = pdf_to_base64_preview(filled_path, page_num)
-                        
-                        # Get processing stats
-                        stats = filler.get_processing_stats()
-                        
-                        # Clean up uploaded form
-                        if os.path.exists(form_filepath):
-                            os.remove(form_filepath)
-                        
-                        if preview_result['success']:
-                            return jsonify({
-                                'success': True,
-                                'preview': preview_result,
-                                'filename': f"filled_{filename}",
-                                'stats': {
-                                    'fields_filled': stats['fields_filled'],
-                                    'mapping_errors': stats['mapping_errors']
-                                }
-                            })
-                        else:
-                            return jsonify({'success': False, 'error': preview_result['error']})
-                    else:
-                        return jsonify({'success': False, 'error': 'Failed to fill PDF form for preview'})
-                        
-            except Exception as e:
-                # Clean up uploaded form
-                if os.path.exists(form_filepath):
-                    os.remove(form_filepath)
-                return jsonify({'success': False, 'error': f'Form filling preview error: {str(e)}'})
-        
-        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Filled form preview error: {str(e)}'
-        }), 500
-
 @app.route('/preview-batch-results', methods=['POST'])
 @login_required
 def preview_batch_results():
@@ -1641,6 +1558,176 @@ def preview_batch_results():
         return jsonify({
             'success': False,
             'error': f'Batch preview error: {str(e)}'
+        }), 500
+
+@app.route('/preview-filled-form', methods=['POST'])
+@login_required
+def preview_filled_form():
+    """
+    Generate a preview of a filled PDF form with custom data
+    """
+    try:
+        # Get form data from request
+        form_data_json = request.form.get('form_data')
+        if form_data_json:
+            try:
+                custom_data = json.loads(form_data_json)
+            except json.JSONDecodeError:
+                custom_data = {}
+        else:
+            # Fall back to extracted data from cookies
+            extracted_data = request.cookies.get('extracted_data')
+            has_data = request.cookies.get('has_data')
+            
+            if not has_data or not extracted_data:
+                return jsonify({'success': False, 'error': 'No form data found'})
+            
+            try:
+                custom_data = json.loads(extracted_data)
+            except json.JSONDecodeError:
+                return jsonify({'success': False, 'error': 'Invalid form data'})
+
+        # Apply simplification and filtering to the data before filling
+        simplified_data = simplify_llama_output(custom_data) if LLAMA_PARSER_AVAILABLE else custom_data
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"preview_form_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Use FormFIller for semantic form filling
+                with PyMuPDFTemporaryFiller() as filler:
+                    filled_path = filler.fill_single_form(simplified_data, form_filepath)
+                    
+                    if filled_path:
+                        # Get page number from request (default to 0)
+                        page_num = int(request.form.get('page', 0))
+                        
+                        # Generate preview of filled form
+                        preview_result = pdf_to_base64_preview(filled_path, page_num)
+                        
+                        # Get processing stats
+                        stats = filler.get_processing_stats()
+                        
+                        # Clean up uploaded form
+                        if os.path.exists(form_filepath):
+                            os.remove(form_filepath)
+                        
+                        if preview_result['success']:
+                            return jsonify({
+                                'success': True,
+                                'preview': preview_result,
+                                'filename': f"filled_{filename}",
+                                'stats': {
+                                    'fields_filled': stats['fields_filled'],
+                                    'mapping_errors': stats['mapping_errors']
+                                }
+                            })
+                        else:
+                            return jsonify({'success': False, 'error': preview_result['error']})
+                    else:
+                        return jsonify({'success': False, 'error': 'Failed to fill PDF form for preview'})
+                        
+            except Exception as e:
+                # Clean up uploaded form
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({'success': False, 'error': f'Form filling preview error: {str(e)}'})
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Preview generation error: {str(e)}'
+        }), 500
+
+@app.route('/fill-edited-form', methods=['POST'])
+@login_required
+def fill_edited_form():
+    """
+    Fill a PDF form with edited data and return the filled form for download
+    """
+    try:
+        # Get form data from request
+        form_data_json = request.form.get('form_data')
+        if form_data_json:
+            try:
+                custom_data = json.loads(form_data_json)
+            except json.JSONDecodeError:
+                custom_data = {}
+        else:
+            # Fall back to extracted data from cookies
+            extracted_data = request.cookies.get('extracted_data')
+            has_data = request.cookies.get('has_data')
+            
+            if not has_data or not extracted_data:
+                return jsonify({'success': False, 'error': 'No form data found'})
+            
+            try:
+                custom_data = json.loads(extracted_data)
+            except json.JSONDecodeError:
+                return jsonify({'success': False, 'error': 'Invalid form data'})
+
+        # Apply simplification and filtering to the data before filling
+        simplified_data = simplify_llama_output(custom_data) if LLAMA_PARSER_AVAILABLE else custom_data
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"edit_form_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Use FormFIller for semantic form filling
+                with PyMuPDFTemporaryFiller() as filler:
+                    filled_path = filler.fill_single_form(simplified_data, form_filepath)
+                    
+                    if filled_path:
+                        # Copy filled form to permanent location for download
+                        output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"edited_filled_{filename}")
+                        import shutil
+                        shutil.copy2(filled_path, output_filepath)
+                        
+                        # Clean up uploaded form
+                        if os.path.exists(form_filepath):
+                            os.remove(form_filepath)
+                        
+                        # Return the filled form as a download
+                        return send_file(output_filepath, as_attachment=True, 
+                                       download_name=f"edited_{filename}", 
+                                       mimetype='application/pdf')
+                    else:
+                        return jsonify({'success': False, 'error': 'Failed to fill PDF form'})
+                        
+            except Exception as e:
+                # Clean up uploaded form
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({'success': False, 'error': f'Form filling error: {str(e)}'})
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Form filling error: {str(e)}'
         }), 500
 
 @app.route('/streamlined-batch-process', methods=['POST'])
