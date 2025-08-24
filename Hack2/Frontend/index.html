@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Upload System</title>
+    <title>Financial Document Processing System</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
@@ -46,7 +46,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
@@ -147,22 +147,19 @@
             }
         }
 
-        .upload-sections {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
+        .workflow-sections {
             padding: 50px;
         }
 
-        .upload-section {
+        .workflow-step {
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border-radius: 20px;
             padding: 40px;
+            margin-bottom: 40px;
             border: 1px solid rgba(255, 255, 255, 0.15);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: center;
             box-shadow: 
                 0 20px 40px rgba(0, 0, 0, 0.1),
                 0 0 0 1px rgba(255, 255, 255, 0.1),
@@ -172,11 +169,15 @@
             animation: slideInLeft 1s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .upload-section:nth-child(2) {
+        .workflow-step:nth-child(2) {
             animation: slideInRight 1s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
         }
 
-        .upload-section::before {
+        .workflow-step:nth-child(3) {
+            animation: slideInLeft 1s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+        }
+
+        .workflow-step::before {
             content: '';
             position: absolute;
             top: 0;
@@ -187,25 +188,17 @@
             transition: left 0.6s ease;
         }
 
-        .upload-section:hover::before {
+        .workflow-step:hover::before {
             left: 100%;
         }
 
-        .upload-section:hover {
+        .workflow-step:hover {
             border-color: rgba(255, 255, 255, 0.3);
             transform: translateY(-8px) scale(1.02);
             box-shadow: 
                 0 30px 60px rgba(0, 0, 0, 0.2),
                 0 0 0 1px rgba(255, 255, 255, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        }
-
-        .upload-section.single {
-            border-color: rgba(5, 150, 105, 0.6);
-        }
-
-        .upload-section.multiple {
-            border-color: rgba(37, 99, 235, 0.6);
         }
 
         @keyframes slideInLeft {
@@ -230,25 +223,30 @@
             }
         }
 
-        .section-icon {
-            font-size: 4rem;
-            margin-bottom: 28px;
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .step-icon {
+            font-size: 3rem;
+            margin-right: 20px;
             opacity: 1;
             display: inline-block;
             animation: bounceIn 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.5s both;
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
         }
 
-        .section-title {
+        .step-title {
             font-size: 1.75rem;
-            margin-bottom: 20px;
             color: #f8fafc;
             font-weight: 700;
             letter-spacing: -0.025em;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
-        .section-description {
+        .step-description {
             color: rgba(248, 250, 252, 0.8);
             margin-bottom: 32px;
             line-height: 1.6;
@@ -274,11 +272,17 @@
             }
         }
 
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
         .upload-area {
             border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 16px;
             padding: 40px 32px;
-            margin-bottom: 28px;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             background: rgba(255, 255, 255, 0.05);
@@ -286,6 +290,7 @@
             -webkit-backdrop-filter: blur(10px);
             position: relative;
             overflow: hidden;
+            text-align: center;
         }
 
         .upload-area::before {
@@ -320,6 +325,14 @@
             box-shadow: 
                 0 25px 50px rgba(59, 130, 246, 0.3),
                 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+
+        .upload-area.single {
+            border-color: rgba(5, 150, 105, 0.6);
+        }
+
+        .upload-area.multiple {
+            border-color: rgba(37, 99, 235, 0.6);
         }
 
         .upload-icon {
@@ -448,7 +461,7 @@
             box-shadow: 0 8px 16px rgba(239, 68, 68, 0.4);
         }
 
-        .upload-btn {
+        .action-btn {
             background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 50%, #3b82f6 100%);
             color: white;
             border: none;
@@ -468,7 +481,7 @@
                 0 0 0 1px rgba(255, 255, 255, 0.1);
         }
 
-        .upload-btn::before {
+        .action-btn::before {
             content: '';
             position: absolute;
             top: 0;
@@ -479,11 +492,11 @@
             transition: left 0.6s ease;
         }
 
-        .upload-btn:hover::before {
+        .action-btn:hover::before {
             left: 100%;
         }
 
-        .upload-btn:hover {
+        .action-btn:hover {
             transform: translateY(-4px) scale(1.02);
             box-shadow: 
                 0 20px 40px rgba(30, 64, 175, 0.4),
@@ -491,7 +504,7 @@
             background: linear-gradient(135deg, #3b82f6 0%, #1e40af 50%, #1e3a8a 100%);
         }
 
-        .upload-btn:disabled {
+        .action-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
             transform: none;
@@ -566,6 +579,45 @@
             background: rgba(59, 130, 246, 0.15);
             color: #60a5fa;
             border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .extracted-data {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .extracted-data h4 {
+            color: #60a5fa;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .data-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-label {
+            color: #93c5fd;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .data-value {
+            color: #e2e8f0;
+            font-size: 0.95rem;
         }
 
         .security-badge {
@@ -681,10 +733,17 @@
             100% { transform: scale(1); }
         }
 
+        .hidden {
+            display: none;
+        }
+
         @media (max-width: 768px) {
-            .upload-sections {
+            .upload-grid {
                 grid-template-columns: 1fr;
                 gap: 20px;
+            }
+            
+            .workflow-sections {
                 padding: 20px;
             }
             
@@ -692,7 +751,7 @@
                 font-size: 2rem;
             }
             
-            .upload-section {
+            .workflow-step {
                 padding: 20px;
             }
         }
@@ -718,100 +777,201 @@
 
     <div class="container">
         <div class="header">
-            <h1>Financial Document Processing</h1>
-            <p>Secure and efficient document management for financial institutions</p>
+            <h1>Financial Document Processing System</h1>
+            <p>Comprehensive AI-powered document processing and form filling for financial institutions</p>
         </div>
         
-        <div class="upload-sections">
-            <!-- Forms Upload Section -->
-            <div class="upload-section single">
-                <div class="section-icon">📋</div>
-                <h2 class="section-title">Financial Forms</h2>
-                <p class="section-description">Upload financial forms, applications, and compliance documents</p>
+        <div class="workflow-sections">
+            <!-- Step 1: Extract Data from Documents -->
+            <div class="workflow-step">
+                <div class="step-header">
+                    <div class="step-icon">📄</div>
+                    <div>
+                        <h2 class="step-title">Step 1: Extract Data from Documents</h2>
+                        <p class="step-description">Upload financial documents to extract contact information and data using advanced AI parsing</p>
+                    </div>
+                </div>
                 
-                <div class="upload-area" id="singleUploadArea">
+                <div class="upload-area single" id="dataUploadArea">
                     <div class="upload-icon">📁</div>
-                    <div class="upload-text">Click to select or drag & drop</div>
+                    <div class="upload-text">Click to select document or drag & drop</div>
                     <div class="upload-hint">Supports PDF, DOC, DOCX files</div>
-                    <input type="file" class="file-input" id="singleFileInput" accept=".pdf,.doc,.docx">
+                    <input type="file" class="file-input" id="dataFileInput" accept=".pdf,.doc,.docx">
                 </div>
                 
-                <div class="selected-files" id="singleSelectedFiles"></div>
+                <div class="selected-files" id="dataSelectedFiles"></div>
                 
-                <button class="upload-btn" id="singleUploadBtn" disabled>Process Form</button>
+                <button class="action-btn" id="extractDataBtn" disabled>🔍 Extract Data</button>
                 
-                <div class="progress-bar" id="singleProgressBar" style="display: none;">
-                    <div class="progress-fill" id="singleProgressFill"></div>
+                <div class="progress-bar" id="dataProgressBar" style="display: none;">
+                    <div class="progress-fill" id="dataProgressFill"></div>
                 </div>
                 
-                <div id="singleStatusMessage"></div>
-                <div class="security-badge">256-bit encryption</div>
+                <div id="dataStatusMessage"></div>
+                <div id="extractedDataDisplay" class="hidden"></div>
+                <div class="security-badge">AI-powered extraction</div>
             </div>
-            
-            <!-- Documents Upload Section -->
-            <div class="upload-section multiple">
-                <div class="section-icon">📚</div>
-                <h2 class="section-title">Financial Documents</h2>
-                <p class="section-description">Upload statements, reports, and financial records for batch processing</p>
-                
-                <div class="upload-area" id="multipleUploadArea">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">Click to select or drag & drop</div>
-                    <div class="upload-hint">Supports multiple PDF, DOC, DOCX files</div>
-                    <input type="file" class="file-input" id="multipleFileInput" accept=".pdf,.doc,.docx" multiple>
+
+            <!-- Step 2: Fill PDF Forms -->
+            <div class="workflow-step" id="formStep" class="hidden">
+                <div class="step-header">
+                    <div class="step-icon">📋</div>
+                    <div>
+                        <h2 class="step-title">Step 2: Fill PDF Forms</h2>
+                        <p class="step-description">Upload single or multiple PDF forms to automatically fill them with extracted data</p>
+                    </div>
                 </div>
                 
-                <div class="selected-files" id="multipleSelectedFiles"></div>
-                
-                <button class="upload-btn" id="multipleUploadBtn" disabled>Process Documents</button>
-                
-                <div class="progress-bar" id="multipleProgressBar" style="display: none;">
-                    <div class="progress-fill" id="multipleProgressFill"></div>
+                <div class="upload-grid">
+                    <!-- Single Form Upload -->
+                    <div class="upload-area single" id="singleFormUploadArea">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Single Form</div>
+                        <div class="upload-hint">Upload one PDF form</div>
+                        <input type="file" class="file-input" id="singleFormInput" accept=".pdf">
+                    </div>
+                    
+                    <!-- Multiple Forms Upload -->
+                    <div class="upload-area multiple" id="multipleFormsUploadArea">
+                        <div class="upload-icon">📚</div>
+                        <div class="upload-text">Multiple Forms</div>
+                        <div class="upload-hint">Upload multiple PDF forms</div>
+                        <input type="file" class="file-input" id="multipleFormsInput" accept=".pdf" multiple>
+                    </div>
                 </div>
                 
-                <div id="multipleStatusMessage"></div>
-                <div class="security-badge">Batch processing</div>
+                <div class="selected-files" id="formSelectedFiles"></div>
+                
+                <button class="action-btn" id="fillFormsBtn" disabled>📝 Fill Forms</button>
+                
+                <div class="progress-bar" id="formProgressBar" style="display: none;">
+                    <div class="progress-fill" id="formProgressFill"></div>
+                </div>
+                
+                <div id="formStatusMessage"></div>
+                <div class="security-badge">Secure form filling</div>
+            </div>
+
+            <!-- Step 3: Advanced Batch Processing -->
+            <div class="workflow-step">
+                <div class="step-header">
+                    <div class="step-icon">🚀</div>
+                    <div>
+                        <h2 class="step-title">Step 3: Advanced Batch Processing</h2>
+                        <p class="step-description">Process multiple documents and fill multiple forms simultaneously with comprehensive reporting</p>
+                    </div>
+                </div>
+                
+                <div class="upload-grid">
+                    <!-- Batch Documents Upload -->
+                    <div class="upload-area multiple" id="batchDocumentsUploadArea">
+                        <div class="upload-icon">📄</div>
+                        <div class="upload-text">Documents</div>
+                        <div class="upload-hint">Upload multiple documents to extract data from</div>
+                        <input type="file" class="file-input" id="batchDocumentsInput" accept=".pdf,.doc,.docx" multiple>
+                    </div>
+                    
+                    <!-- Batch Forms Upload -->
+                    <div class="upload-area multiple" id="batchFormsUploadArea">
+                        <div class="upload-icon">📋</div>
+                        <div class="upload-text">Forms</div>
+                        <div class="upload-hint">Upload multiple forms to fill</div>
+                        <input type="file" class="file-input" id="batchFormsInput" accept=".pdf" multiple>
+                    </div>
+                </div>
+                
+                <div class="selected-files" id="batchSelectedFiles"></div>
+                
+                <button class="action-btn" id="batchProcessBtn" disabled>🚀 Start Batch Processing</button>
+                
+                <div class="progress-bar" id="batchProgressBar" style="display: none;">
+                    <div class="progress-fill" id="batchProgressFill"></div>
+                </div>
+                
+                <div id="batchStatusMessage"></div>
+                <div class="security-badge">Enterprise-grade processing</div>
             </div>
         </div>
     </div>
 
     <script>
-        // File handling for forms upload
-        const singleUploadArea = document.getElementById('singleUploadArea');
-        const singleFileInput = document.getElementById('singleFileInput');
-        const singleSelectedFiles = document.getElementById('singleSelectedFiles');
-        const singleUploadBtn = document.getElementById('singleUploadBtn');
-        const singleProgressBar = document.getElementById('singleProgressBar');
-        const singleProgressFill = document.getElementById('singleProgressFill');
-        const singleStatusMessage = document.getElementById('singleStatusMessage');
+        // Global variables
+        let extractedData = null;
+        let selectedDocuments = [];
+        let selectedForms = [];
+        let selectedBatchDocuments = [];
+        let selectedBatchForms = [];
 
-        // File handling for documents upload
-        const multipleUploadArea = document.getElementById('multipleUploadArea');
-        const multipleFileInput = document.getElementById('multipleFileInput');
-        const multipleSelectedFiles = document.getElementById('multipleSelectedFiles');
-        const multipleUploadBtn = document.getElementById('multipleUploadBtn');
-        const multipleProgressBar = document.getElementById('multipleProgressBar');
-        const multipleProgressFill = document.getElementById('multipleProgressFill');
-        const multipleStatusMessage = document.getElementById('multipleStatusMessage');
+        // DOM elements
+        const dataUploadArea = document.getElementById('dataUploadArea');
+        const dataFileInput = document.getElementById('dataFileInput');
+        const dataSelectedFiles = document.getElementById('dataSelectedFiles');
+        const extractDataBtn = document.getElementById('extractDataBtn');
+        const dataProgressBar = document.getElementById('dataProgressBar');
+        const dataProgressFill = document.getElementById('dataProgressFill');
+        const dataStatusMessage = document.getElementById('dataStatusMessage');
+        const extractedDataDisplay = document.getElementById('extractedDataDisplay');
 
-        // Forms upload handlers
-        singleUploadArea.addEventListener('click', () => singleFileInput.click());
-        singleUploadArea.addEventListener('dragover', handleDragOver);
-        singleUploadArea.addEventListener('dragleave', handleDragLeave);
-        singleUploadArea.addEventListener('drop', handleSingleDrop);
-        singleFileInput.addEventListener('change', handleSingleFileSelect);
+        const formStep = document.getElementById('formStep');
+        const singleFormUploadArea = document.getElementById('singleFormUploadArea');
+        const singleFormInput = document.getElementById('singleFormInput');
+        const multipleFormsUploadArea = document.getElementById('multipleFormsUploadArea');
+        const multipleFormsInput = document.getElementById('multipleFormsInput');
+        const formSelectedFiles = document.getElementById('formSelectedFiles');
+        const fillFormsBtn = document.getElementById('fillFormsBtn');
+        const formProgressBar = document.getElementById('formProgressBar');
+        const formProgressFill = document.getElementById('formProgressFill');
+        const formStatusMessage = document.getElementById('formStatusMessage');
 
-        // Documents upload handlers
-        multipleUploadArea.addEventListener('click', () => multipleFileInput.click());
-        multipleUploadArea.addEventListener('dragover', handleDragOver);
-        multipleUploadArea.addEventListener('dragleave', handleDragLeave);
-        multipleUploadArea.addEventListener('drop', handleMultipleDrop);
-        multipleFileInput.addEventListener('change', handleMultipleFileSelect);
+        const batchDocumentsUploadArea = document.getElementById('batchDocumentsUploadArea');
+        const batchDocumentsInput = document.getElementById('batchDocumentsInput');
+        const batchFormsUploadArea = document.getElementById('batchFormsUploadArea');
+        const batchFormsInput = document.getElementById('batchFormsInput');
+        const batchSelectedFiles = document.getElementById('batchSelectedFiles');
+        const batchProcessBtn = document.getElementById('batchProcessBtn');
+        const batchProgressBar = document.getElementById('batchProgressBar');
+        const batchProgressFill = document.getElementById('batchProgressFill');
+        const batchStatusMessage = document.getElementById('batchStatusMessage');
 
-        // Upload button handlers
-        singleUploadBtn.addEventListener('click', () => uploadFormFile());
-        multipleUploadBtn.addEventListener('click', () => uploadDocumentFiles());
+        // Event listeners for Step 1 - Data Extraction
+        dataUploadArea.addEventListener('click', () => dataFileInput.click());
+        dataUploadArea.addEventListener('dragover', handleDragOver);
+        dataUploadArea.addEventListener('dragleave', handleDragLeave);
+        dataUploadArea.addEventListener('drop', handleDataDrop);
+        dataFileInput.addEventListener('change', handleDataFileSelect);
+        extractDataBtn.addEventListener('click', extractDataFromDocument);
 
+        // Event listeners for Step 2 - Form Filling
+        singleFormUploadArea.addEventListener('click', () => singleFormInput.click());
+        singleFormUploadArea.addEventListener('dragover', handleDragOver);
+        singleFormUploadArea.addEventListener('dragleave', handleDragLeave);
+        singleFormUploadArea.addEventListener('drop', handleSingleFormDrop);
+        singleFormInput.addEventListener('change', handleSingleFormSelect);
+
+        multipleFormsUploadArea.addEventListener('click', () => multipleFormsInput.click());
+        multipleFormsUploadArea.addEventListener('dragover', handleDragOver);
+        multipleFormsUploadArea.addEventListener('dragleave', handleDragLeave);
+        multipleFormsUploadArea.addEventListener('drop', handleMultipleFormsDrop);
+        multipleFormsInput.addEventListener('change', handleMultipleFormsSelect);
+
+        fillFormsBtn.addEventListener('click', fillSelectedForms);
+
+        // Event listeners for Step 3 - Batch Processing
+        batchDocumentsUploadArea.addEventListener('click', () => batchDocumentsInput.click());
+        batchDocumentsUploadArea.addEventListener('dragover', handleDragOver);
+        batchDocumentsUploadArea.addEventListener('dragleave', handleDragLeave);
+        batchDocumentsUploadArea.addEventListener('drop', handleBatchDocumentsDrop);
+        batchDocumentsInput.addEventListener('change', handleBatchDocumentsSelect);
+
+        batchFormsUploadArea.addEventListener('click', () => batchFormsInput.click());
+        batchFormsUploadArea.addEventListener('dragover', handleDragOver);
+        batchFormsUploadArea.addEventListener('dragleave', handleDragLeave);
+        batchFormsUploadArea.addEventListener('drop', handleBatchFormsDrop);
+        batchFormsInput.addEventListener('change', handleBatchFormsSelect);
+
+        batchProcessBtn.addEventListener('click', startBatchProcessing);
+
+        // Drag and drop handlers
         function handleDragOver(e) {
             e.preventDefault();
             e.currentTarget.classList.add('dragover');
@@ -822,80 +982,158 @@
             e.currentTarget.classList.remove('dragover');
         }
 
-        function handleSingleDrop(e) {
+        function handleDataDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('dragover');
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                handleFormFile(files[0]);
+                handleDataFile(files[0]);
             }
         }
 
-        function handleMultipleDrop(e) {
+        function handleSingleFormDrop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('dragover');
             const files = e.dataTransfer.files;
             if (files.length > 0) {
-                handleDocumentFiles(Array.from(files));
+                handleSingleFormFile(files[0]);
             }
         }
 
-        function handleSingleFileSelect(e) {
+        function handleMultipleFormsDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleMultipleFormFiles(Array.from(files));
+            }
+        }
+
+        function handleBatchDocumentsDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleBatchDocumentFiles(Array.from(files));
+            }
+        }
+
+        function handleBatchFormsDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleBatchFormFiles(Array.from(files));
+            }
+        }
+
+        // File selection handlers
+        function handleDataFileSelect(e) {
             const file = e.target.files[0];
             if (file) {
-                handleFormFile(file);
+                handleDataFile(file);
             }
         }
 
-        function handleMultipleFileSelect(e) {
+        function handleSingleFormSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleSingleFormFile(file);
+            }
+        }
+
+        function handleMultipleFormsSelect(e) {
             const files = Array.from(e.target.files);
             if (files.length > 0) {
-                handleDocumentFiles(files);
+                handleMultipleFormFiles(files);
             }
         }
 
-        function handleFormFile(file) {
-            // Clear previous selection
-            singleSelectedFiles.innerHTML = '';
-            
+        function handleBatchDocumentsSelect(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                handleBatchDocumentFiles(files);
+            }
+        }
+
+        function handleBatchFormsSelect(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                handleBatchFormFiles(files);
+            }
+        }
+
+        // File handling functions
+        function handleDataFile(file) {
             if (isValidFile(file)) {
-                displayFormFile(file);
-                singleUploadBtn.disabled = false;
+                dataSelectedFiles.innerHTML = '';
+                displayFile(file, dataSelectedFiles, 'data');
+                extractDataBtn.disabled = false;
             } else {
-                showStatus(singleStatusMessage, 'Please select a valid file (PDF, DOC, DOCX)', 'error');
+                showStatus(dataStatusMessage, 'Please select a valid file (PDF, DOC, DOCX)', 'error');
             }
         }
 
-        function handleDocumentFiles(files) {
-            // Clear previous selection
-            multipleSelectedFiles.innerHTML = '';
-            
-            const validFiles = files.filter(file => isValidFile(file));
-            
+        function handleSingleFormFile(file) {
+            if (isValidPDFFile(file)) {
+                selectedForms = [file];
+                updateFormDisplay();
+                fillFormsBtn.disabled = !extractedData;
+            } else {
+                showStatus(formStatusMessage, 'Please select a valid PDF file', 'error');
+            }
+        }
+
+        function handleMultipleFormFiles(files) {
+            const validFiles = files.filter(file => isValidPDFFile(file));
             if (validFiles.length > 0) {
-                validFiles.forEach(file => displayDocumentFile(file));
-                multipleUploadBtn.disabled = false;
+                selectedForms = validFiles;
+                updateFormDisplay();
+                fillFormsBtn.disabled = !extractedData;
             } else {
-                showStatus(multipleStatusMessage, 'Please select valid files (PDF, DOC, DOCX)', 'error');
+                showStatus(formStatusMessage, 'Please select valid PDF files', 'error');
             }
         }
 
+        function handleBatchDocumentFiles(files) {
+            const validFiles = files.filter(file => isValidFile(file));
+            if (validFiles.length > 0) {
+                selectedBatchDocuments = validFiles;
+                updateBatchDisplay();
+                updateBatchProcessButton();
+            } else {
+                showStatus(batchStatusMessage, 'Please select valid document files (PDF, DOC, DOCX)', 'error');
+            }
+        }
+
+        function handleBatchFormFiles(files) {
+            const validFiles = files.filter(file => isValidPDFFile(file));
+            if (validFiles.length > 0) {
+                selectedBatchForms = validFiles;
+                updateBatchDisplay();
+                updateBatchProcessButton();
+            } else {
+                showStatus(batchStatusMessage, 'Please select valid PDF form files', 'error');
+            }
+        }
+
+        // File validation
         function isValidFile(file) {
             const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
             return validTypes.includes(file.type);
         }
 
-        function displayFormFile(file) {
-            const fileItem = createFileItem(file);
-            singleSelectedFiles.appendChild(fileItem);
+        function isValidPDFFile(file) {
+            return file.type === 'application/pdf';
         }
 
-        function displayDocumentFile(file) {
-            const fileItem = createFileItem(file);
-            multipleSelectedFiles.appendChild(fileItem);
+        // Display functions
+        function displayFile(file, container, type) {
+            const fileItem = createFileItem(file, type);
+            container.appendChild(fileItem);
         }
 
-        function createFileItem(file) {
+        function createFileItem(file, type) {
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
             
@@ -910,13 +1148,61 @@
             removeBtn.textContent = 'Remove';
             removeBtn.onclick = () => {
                 fileItem.remove();
-                updateUploadButtonState();
+                if (type === 'data') {
+                    extractDataBtn.disabled = true;
+                }
+                updateButtonStates();
             };
             
             fileItem.appendChild(fileInfo);
             fileItem.appendChild(removeBtn);
             
             return fileItem;
+        }
+
+        function updateFormDisplay() {
+            formSelectedFiles.innerHTML = '';
+            selectedForms.forEach(file => {
+                displayFile(file, formSelectedFiles, 'form');
+            });
+        }
+
+        function updateBatchDisplay() {
+            batchSelectedFiles.innerHTML = '';
+            
+            if (selectedBatchDocuments.length > 0) {
+                const docHeader = document.createElement('h4');
+                docHeader.textContent = `Documents (${selectedBatchDocuments.length})`;
+                docHeader.style.color = '#60a5fa';
+                docHeader.style.marginBottom = '10px';
+                batchSelectedFiles.appendChild(docHeader);
+                
+                selectedBatchDocuments.forEach(file => {
+                    displayFile(file, batchSelectedFiles, 'batch-doc');
+                });
+            }
+            
+            if (selectedBatchForms.length > 0) {
+                const formHeader = document.createElement('h4');
+                formHeader.textContent = `Forms (${selectedBatchForms.length})`;
+                formHeader.style.color = '#60a5fa';
+                formHeader.style.marginTop = '20px';
+                formHeader.style.marginBottom = '10px';
+                batchSelectedFiles.appendChild(formHeader);
+                
+                selectedBatchForms.forEach(file => {
+                    displayFile(file, batchSelectedFiles, 'batch-form');
+                });
+            }
+        }
+
+        function updateBatchProcessButton() {
+            batchProcessBtn.disabled = selectedBatchDocuments.length === 0 || selectedBatchForms.length === 0;
+        }
+
+        function updateButtonStates() {
+            fillFormsBtn.disabled = selectedForms.length === 0 || !extractedData;
+            updateBatchProcessButton();
         }
 
         function formatFileSize(bytes) {
@@ -927,132 +1213,224 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        function updateUploadButtonState() {
-            singleUploadBtn.disabled = singleSelectedFiles.children.length === 0;
-            multipleUploadBtn.disabled = multipleSelectedFiles.children.length === 0;
-        }
-
-        function uploadFormFile() {
-            const fileItem = singleSelectedFiles.querySelector('.file-item');
-            if (!fileItem) return;
+        // API functions
+        function extractDataFromDocument() {
+            const file = dataFileInput.files[0];
+            if (!file) return;
             
-            const fileName = fileItem.querySelector('.file-name').textContent;
-            const file = getFileByName(fileName);
+            const formData = new FormData();
+            formData.append('file', file);
             
-            if (file) {
-                uploadFile(file, 'form');
-            }
-        }
-
-        function uploadDocumentFiles() {
-            const fileItems = multipleSelectedFiles.querySelectorAll('.file-item');
-            if (fileItems.length === 0) return;
+            showProgress(dataProgressBar, dataProgressFill);
+            showStatus(dataStatusMessage, 'Extracting data from document...', 'info');
             
-            const files = Array.from(fileItems).map(item => {
-                const fileName = item.querySelector('.file-name').textContent;
-                return getFileByName(fileName);
-            }).filter(Boolean);
-            
-            if (files.length > 0) {
-                uploadFiles(files, 'document');
-            }
-        }
-
-        function getFileByName(fileName) {
-            // This is a simplified version - in a real app you'd store file references
-            // For now, we'll simulate the upload
-            return { name: fileName, size: 1024 * 1024 }; // Mock file object
-        }
-
-        function uploadFile(file, type) {
-            const progressBar = type === 'form' ? singleProgressBar : multipleProgressBar;
-            const progressFill = type === 'form' ? singleProgressFill : multipleProgressFill;
-            const statusMessage = type === 'form' ? singleStatusMessage : multipleStatusMessage;
-            
-            progressBar.style.display = 'block';
-            showStatus(statusMessage, 'Processing document...', 'info');
-            
-            // Enhanced upload progress with realistic steps
-            let progress = 0;
-            const steps = [
-                { name: 'Analyzing document...', progress: 25 },
-                { name: 'Extracting data...', progress: 50 },
-                { name: 'Validating information...', progress: 75 },
-                { name: 'Finalizing...', progress: 100 }
-            ];
-            let currentStep = 0;
-            
-            const interval = setInterval(() => {
-                if (progress < steps[currentStep].progress) {
-                    progress += Math.random() * 8 + 2;
-                    if (progress >= steps[currentStep].progress) {
-                        showStatus(statusMessage, steps[currentStep].name, 'info');
-                        currentStep++;
-                    }
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProgress(dataProgressBar);
+                if (data.success) {
+                    extractedData = data.data;
+                    showStatus(dataStatusMessage, `✅ Data extracted successfully! Found ${Object.keys(data.data || {}).length} fields.`, 'success');
+                    displayExtractedData(data.data);
+                    formStep.classList.remove('hidden');
+                    updateButtonStates();
+                } else {
+                    showStatus(dataStatusMessage, `❌ Error: ${data.error}`, 'error');
                 }
+            })
+            .catch(error => {
+                hideProgress(dataProgressBar);
+                showStatus(dataStatusMessage, `❌ Error: ${error.message}`, 'error');
+            });
+        }
+
+        function fillSelectedForms() {
+            if (!extractedData || selectedForms.length === 0) return;
+            
+            const formData = new FormData();
+            
+            if (selectedForms.length === 1) {
+                // Single form
+                formData.append('form_pdf', selectedForms[0]);
                 
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
-                    
-                    // Success animation
-                    progressFill.style.animation = 'successPulse 0.5s ease';
-                    
-                    setTimeout(() => {
-                        progressBar.style.display = 'none';
-                        showStatus(statusMessage, `✅ Successfully processed ${file.name}!`, 'success');
-                        
-                        // Clear files after successful upload
-                        if (type === 'form') {
-                            singleSelectedFiles.innerHTML = '';
-                            singleUploadBtn.disabled = true;
-                        } else {
-                            multipleSelectedFiles.innerHTML = '';
-                            multipleUploadBtn.disabled = true;
+                showProgress(formProgressBar, formProgressFill);
+                showStatus(formStatusMessage, 'Filling form with extracted data...', 'info');
+                
+                fetch('/fill-pdf-form', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        return response.json().then(data => {
+                            throw new Error(data.error || 'Form filling failed');
+                        });
+                    }
+                })
+                .then(blob => {
+                    hideProgress(formProgressBar);
+                    showStatus(formStatusMessage, '✅ Form filled successfully! Downloading...', 'success');
+                    downloadBlob(blob, `filled_${selectedForms[0].name}`);
+                })
+                .catch(error => {
+                    hideProgress(formProgressBar);
+                    showStatus(formStatusMessage, `❌ Error: ${error.message}`, 'error');
+                });
+            } else {
+                // Multiple forms
+                selectedForms.forEach(file => {
+                    formData.append('forms', file);
+                });
+                
+                showProgress(formProgressBar, formProgressFill);
+                showStatus(formStatusMessage, `Filling ${selectedForms.length} forms...`, 'info');
+                
+                fetch('/fill-multiple-forms-single', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideProgress(formProgressBar);
+                    if (data.success) {
+                        showStatus(formStatusMessage, `✅ Successfully filled ${data.filled_forms_count} forms! Downloading ZIP...`, 'success');
+                        if (data.download_url) {
+                            window.location.href = data.download_url;
                         }
-                    }, 800);
-                }
-                progressFill.style.width = progress + '%';
-            }, 150);
+                    } else {
+                        showStatus(formStatusMessage, `❌ Error: ${data.error}`, 'error');
+                    }
+                })
+                .catch(error => {
+                    hideProgress(formProgressBar);
+                    showStatus(formStatusMessage, `❌ Error: ${error.message}`, 'error');
+                });
+            }
         }
 
-        function uploadFiles(files, type) {
-            const progressBar = type === 'form' ? singleProgressBar : multipleProgressBar;
-            const progressFill = type === 'form' ? singleProgressFill : multipleProgressFill;
-            const statusMessage = type === 'form' ? singleStatusMessage : multipleStatusMessage;
+        function startBatchProcessing() {
+            if (selectedBatchDocuments.length === 0 || selectedBatchForms.length === 0) return;
             
+            const formData = new FormData();
+            
+            // Add documents
+            selectedBatchDocuments.forEach(file => {
+                formData.append('documents', file);
+            });
+            
+            // Add forms
+            selectedBatchForms.forEach(file => {
+                formData.append('forms', file);
+            });
+            
+            showProgress(batchProgressBar, batchProgressFill);
+            showStatus(batchStatusMessage, `Starting batch processing of ${selectedBatchDocuments.length} documents and ${selectedBatchForms.length} forms...`, 'info');
+            
+            fetch('/batch-process', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProgress(batchProgressBar);
+                if (data.success) {
+                    showStatus(batchStatusMessage, `✅ Batch processing complete! Processed ${data.workflow_summary.documents_processed} documents and filled ${data.filled_forms_count} forms. Downloading results...`, 'success');
+                    if (data.download_url) {
+                        window.location.href = data.download_url;
+                    }
+                } else {
+                    showStatus(batchStatusMessage, `❌ Batch processing failed: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                hideProgress(batchProgressBar);
+                showStatus(batchStatusMessage, `❌ Batch processing failed: ${error.message}`, 'error');
+            });
+        }
+
+        // Utility functions
+        function showProgress(progressBar, progressFill) {
             progressBar.style.display = 'block';
-            showStatus(statusMessage, `Uploading ${files.length} files...`, 'info');
-            
-            // Simulate batch upload progress
             let progress = 0;
             const interval = setInterval(() => {
-                progress += Math.random() * 15;
-                if (progress >= 100) {
-                    progress = 100;
+                progress += Math.random() * 10;
+                if (progress >= 90) {
+                    progress = 90;
                     clearInterval(interval);
-                    
-                    setTimeout(() => {
-                        progressBar.style.display = 'none';
-                        showStatus(statusMessage, `Successfully uploaded ${files.length} files!`, 'success');
-                        
-                        // Clear files after successful upload
-                        if (type === 'form') {
-                            singleSelectedFiles.innerHTML = '';
-                            singleUploadBtn.disabled = true;
-                        } else {
-                            multipleSelectedFiles.innerHTML = '';
-                            multipleUploadBtn.disabled = true;
-                        }
-                    }, 500);
                 }
                 progressFill.style.width = progress + '%';
-            }, 300);
+            }, 200);
+            progressBar.dataset.interval = interval;
+        }
+
+        function hideProgress(progressBar) {
+            if (progressBar.dataset.interval) {
+                clearInterval(progressBar.dataset.interval);
+            }
+            const progressFill = progressBar.querySelector('.progress-fill');
+            progressFill.style.width = '100%';
+            setTimeout(() => {
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 500);
         }
 
         function showStatus(element, message, type) {
             element.textContent = message;
             element.className = `status-message status-${type}`;
+        }
+
+        function displayExtractedData(data) {
+            extractedDataDisplay.innerHTML = '';
+            
+            if (data && Object.keys(data).length > 0) {
+                const container = document.createElement('div');
+                container.className = 'extracted-data';
+                
+                const title = document.createElement('h4');
+                title.textContent = 'Extracted Data:';
+                container.appendChild(title);
+                
+                const grid = document.createElement('div');
+                grid.className = 'data-grid';
+                
+                for (const [key, value] of Object.entries(data)) {
+                    const item = document.createElement('div');
+                    item.className = 'data-item';
+                    
+                    const label = document.createElement('div');
+                    label.className = 'data-label';
+                    label.textContent = key;
+                    
+                    const valueDiv = document.createElement('div');
+                    valueDiv.className = 'data-value';
+                    valueDiv.textContent = value;
+                    
+                    item.appendChild(label);
+                    item.appendChild(valueDiv);
+                    grid.appendChild(item);
+                }
+                
+                container.appendChild(grid);
+                extractedDataDisplay.appendChild(container);
+                extractedDataDisplay.classList.remove('hidden');
+            }
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
         }
     </script>
 </body>

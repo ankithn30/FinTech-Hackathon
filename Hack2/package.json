@@ -1,0 +1,145 @@
+{
+  "name": "financial-document-processor",
+  "productName": "Financial Document Processing System",
+  "version": "1.0.0",
+  "description": "AI-powered desktop application for processing financial documents and filling PDF forms with extracted data",
+  "main": "main.js",
+  "homepage": "https://github.com/ankithn30/FinTech-Hackathon",
+  "author": {
+    "name": "FinTech Team",
+    "email": "support@fintechprocessor.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build-mac": "electron-builder --mac",
+    "build-win": "electron-builder --win",
+    "build-linux": "electron-builder --linux",
+    "dist": "npm run build",
+    "pack": "electron-builder --dir",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "financial",
+    "document",
+    "processing",
+    "pdf",
+    "forms",
+    "ai",
+    "extraction",
+    "desktop",
+    "electron"
+  ],
+  "build": {
+    "appId": "com.fintech.document-processor",
+    "productName": "Financial Document Processor",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "app.py",
+      "*.py",
+      "templates/**/*",
+      "Frontend/**/*",
+      "assets/**/*",
+      "uploads/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "requirements.txt",
+        "to": "requirements.txt"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist"
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "assets/icon.png",
+      "category": "Office",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Financial Document Processor"
+    },
+    "dmg": {
+      "title": "Financial Document Processor",
+      "backgroundColor": "#1e293b",
+      "window": {
+        "width": 600,
+        "height": 400
+      }
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ankithn30",
+      "repo": "FinTech-Hackathon"
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.3.1",
+    "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
+    "png2icons": "^2.0.1"
+  }
+}

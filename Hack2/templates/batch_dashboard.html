@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTech Batch Processing Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .processing-modes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .mode-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .mode-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .mode-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .mode-card p {
+            color: #6c757d;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .upload-section {
+            margin-bottom: 25px;
+        }
+
+        .upload-section h4 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-message {
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .results-section {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .results-section.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .results-section h4 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+
+        .results-section.error h4 {
+            color: #721c24;
+        }
+
+        .download-btn {
+            background: #28a745;
+            margin-top: 15px;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .feature-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .feature-item h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .feature-item p {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .nav-links {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            margin: 0 15px;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .processing-modes {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 FinTech Batch Processing Dashboard</h1>
+            <p>Process multiple documents and fill multiple forms with AI-powered automation</p>
+        </div>
+
+        <div class="main-content">
+            <div class="processing-modes">
+                <!-- Full Batch Processing -->
+                <div class="mode-card">
+                    <h3>📊 Full Batch Processing</h3>
+                    <p>Upload multiple documents and forms. The system will extract data from documents and automatically fill all forms.</p>
+                    
+                    <div class="upload-section">
+                        <h4>📄 Upload Documents (PDF)</h4>
+                        <input type="file" id="batchDocuments" class="file-input" multiple accept=".pdf" />
+                    </div>
+                    
+                    <div class="upload-section">
+                        <h4>📝 Upload Forms (PDF)</h4>
+                        <input type="file" id="batchForms" class="file-input" multiple accept=".pdf" />
+                    </div>
+                    
+                    <button class="btn" onclick="startBatchProcessing()">
+                        🔄 Start Batch Processing
+                    </button>
+                </div>
+
+                <!-- Multiple Forms from Single Document -->
+                <div class="mode-card">
+                    <h3>📋 Multiple Forms Filling</h3>
+                    <p>Use data from a single document to fill multiple forms. First upload a document, then upload multiple forms to fill.</p>
+                    
+                    <div class="upload-section">
+                        <h4>📄 Upload Single Document (PDF)</h4>
+                        <input type="file" id="singleDocument" class="file-input" accept=".pdf" />
+                    </div>
+                    
+                    <button class="btn" onclick="processSingleDocument()" id="processDocBtn">
+                        🔍 Extract Data from Document
+                    </button>
+                    
+                    <div id="multipleFormsSection" style="display: none;">
+                        <div class="upload-section" style="margin-top: 20px;">
+                            <h4>📝 Upload Multiple Forms (PDF)</h4>
+                            <input type="file" id="multipleForms" class="file-input" multiple accept=".pdf" />
+                        </div>
+                        
+                        <button class="btn" onclick="fillMultipleForms()">
+                            ✏️ Fill All Forms
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="progress-section" id="progressSection">
+                <h4>Processing Status</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="status-message" id="statusMessage">Initializing...</div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection">
+                <h4 id="resultsTitle">Processing Complete!</h4>
+                <div id="resultsContent"></div>
+                <button class="btn download-btn" id="downloadBtn" style="display: none;" onclick="downloadResults()">
+                    📥 Download Results
+                </button>
+            </div>
+
+            <!-- Features Section -->
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <h4>Parallel Processing</h4>
+                    <p>Process multiple documents and forms simultaneously for maximum efficiency</p>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">🤖</div>
+                    <h4>AI-Powered Extraction</h4>
+                    <p>Advanced AI agents extract data with high accuracy and confidence scoring</p>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">✅</div>
+                    <h4>Validation Engine</h4>
+                    <p>3-tier validation system ensures data quality and compliance</p>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <h4>Comprehensive Reports</h4>
+                    <p>Detailed processing reports with statistics and validation results</p>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <div class="nav-links">
+                <a href="/">🏠 Main Dashboard</a>
+                <a href="/frontend">💼 Financial Dashboard</a>
+                <a href="#" onclick="showHelp()">❓ Help & Documentation</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let downloadUrl = '';
+        let hasExtractedData = false;
+
+        function showProgress(message) {
+            document.getElementById('progressSection').style.display = 'block';
+            document.getElementById('statusMessage').textContent = message;
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('statusMessage').textContent = message;
+        }
+
+        function showResults(success, title, content, downloadUrl = '') {
+            document.getElementById('progressSection').style.display = 'none';
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsTitle = document.getElementById('resultsTitle');
+            const resultsContent = document.getElementById('resultsContent');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            resultsSection.style.display = 'block';
+            resultsSection.className = success ? 'results-section' : 'results-section error';
+            resultsTitle.textContent = title;
+            resultsContent.innerHTML = content;
+
+            if (downloadUrl) {
+                downloadBtn.style.display = 'block';
+                window.downloadUrl = downloadUrl;
+            } else {
+                downloadBtn.style.display = 'none';
+            }
+        }
+
+        async function startBatchProcessing() {
+            const documentsInput = document.getElementById('batchDocuments');
+            const formsInput = document.getElementById('batchForms');
+
+            if (!documentsInput.files.length) {
+                alert('Please select documents to process');
+                return;
+            }
+
+            if (!formsInput.files.length) {
+                alert('Please select forms to fill');
+                return;
+            }
+
+            showProgress('Starting batch processing...');
+            updateProgress(10, 'Uploading files...');
+
+            const formData = new FormData();
+            
+            // Add documents
+            for (let file of documentsInput.files) {
+                formData.append('documents', file);
+            }
+            
+            // Add forms
+            for (let file of formsInput.files) {
+                formData.append('forms', file);
+            }
+
+            try {
+                updateProgress(30, 'Processing documents with AI agents...');
+                
+                const response = await fetch('/batch-process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                updateProgress(80, 'Filling forms...');
+                const result = await response.json();
+
+                if (result.success) {
+                    updateProgress(100, 'Processing complete!');
+                    
+                    const content = `
+                        <p><strong>Documents processed:</strong> ${result.workflow_summary.documents_processed}</p>
+                        <p><strong>Forms filled:</strong> ${result.filled_forms_count}</p>
+                        <p><strong>Success rate:</strong> ${((result.filled_forms_count / result.workflow_summary.documents_processed) * 100).toFixed(1)}%</p>
+                        <p><strong>Processing time:</strong> Complete</p>
+                    `;
+                    
+                    showResults(true, 'Batch Processing Complete! 🎉', content, result.download_url);
+                } else {
+                    showResults(false, 'Processing Failed ❌', `<p>Error: ${result.error}</p>`);
+                }
+            } catch (error) {
+                showResults(false, 'Processing Failed ❌', `<p>Error: ${error.message}</p>`);
+            }
+        }
+
+        async function processSingleDocument() {
+            const documentInput = document.getElementById('singleDocument');
+
+            if (!documentInput.files.length) {
+                alert('Please select a document to process');
+                return;
+            }
+
+            showProgress('Extracting data from document...');
+            updateProgress(20, 'Uploading document...');
+
+            const formData = new FormData();
+            formData.append('file', documentInput.files[0]);
+
+            try {
+                updateProgress(60, 'Analyzing document with AI...');
+                
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    updateProgress(100, 'Data extraction complete!');
+                    hasExtractedData = true;
+                    
+                    const fieldCount = Object.keys(result.data).length;
+                    const content = `
+                        <p><strong>Document:</strong> ${result.filename}</p>
+                        <p><strong>Fields extracted:</strong> ${fieldCount}</p>
+                        <p><strong>Status:</strong> Ready to fill forms</p>
+                        <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                            <strong>Extracted fields:</strong><br>
+                            ${Object.keys(result.data).map(key => `• ${key}: ${result.data[key]}`).join('<br>')}
+                        </div>
+                    `;
+                    
+                    showResults(true, 'Data Extraction Complete! ✅', content);
+                    document.getElementById('multipleFormsSection').style.display = 'block';
+                } else {
+                    showResults(false, 'Extraction Failed ❌', `<p>Error: ${result.error}</p>`);
+                }
+            } catch (error) {
+                showResults(false, 'Extraction Failed ❌', `<p>Error: ${error.message}</p>`);
+            }
+        }
+
+        async function fillMultipleForms() {
+            if (!hasExtractedData) {
+                alert('Please extract data from a document first');
+                return;
+            }
+
+            const formsInput = document.getElementById('multipleForms');
+
+            if (!formsInput.files.length) {
+                alert('Please select forms to fill');
+                return;
+            }
+
+            showProgress('Filling multiple forms...');
+            updateProgress(20, 'Uploading forms...');
+
+            const formData = new FormData();
+            
+            for (let file of formsInput.files) {
+                formData.append('forms', file);
+            }
+
+            try {
+                updateProgress(60, 'Filling forms with extracted data...');
+                
+                const response = await fetch('/fill-multiple-forms-single', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    updateProgress(100, 'Forms filled successfully!');
+                    
+                    const content = `
+                        <p><strong>Forms filled:</strong> ${result.filled_forms_count}</p>
+                        <p><strong>Status:</strong> All forms completed successfully</p>
+                        <p><strong>Download:</strong> ZIP file with all filled forms</p>
+                    `;
+                    
+                    showResults(true, 'Forms Filled Successfully! 🎉', content, result.download_url);
+                } else {
+                    showResults(false, 'Form Filling Failed ❌', `<p>Error: ${result.error}</p>`);
+                }
+            } catch (error) {
+                showResults(false, 'Form Filling Failed ❌', `<p>Error: ${error.message}</p>`);
+            }
+        }
+
+        function downloadResults() {
+            if (window.downloadUrl) {
+                window.location.href = window.downloadUrl;
+            }
+        }
+
+        function showHelp() {
+            alert(`FinTech Batch Processing Help:
+
+1. Full Batch Processing:
+   - Upload multiple documents (invoices, contracts, etc.)
+   - Upload multiple blank forms
+   - System extracts data and fills all forms automatically
+
+2. Multiple Forms Filling:
+   - Upload one document to extract data
+   - Upload multiple forms to fill with that data
+   - Perfect for filling multiple forms with same information
+
+Features:
+• Parallel processing for speed
+• AI-powered data extraction
+• 3-tier validation system
+• Comprehensive error handling
+• Detailed processing reports
+
+Supported formats: PDF files only`);
+        }
+
+        // File input styling
+        document.querySelectorAll('.file-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const fileCount = this.files.length;
+                if (fileCount > 0) {
+                    this.style.borderColor = '#28a745';
+                    this.style.background = '#f8fff8';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
