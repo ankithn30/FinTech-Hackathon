@@ -4,4 +4,6 @@ pydantic
 python-dotenv
 werkzeug
 reportlab
-pdfrw
+streamlit
+anthropic
+PyMuPDF

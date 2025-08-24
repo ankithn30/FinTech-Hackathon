@@ -60,8 +60,10 @@ After building, distributable files are located in `Hack2/dist/`:
 - `Financial Document Processor-1.0.0-arm64-mac.zip` (Apple Silicon)
 
 **Windows:**
-- `Financial Document Processor Setup 1.0.0.exe` (NSIS installer)
-- `Financial Document Processor 1.0.0.exe` (Portable)
+- `Financial Document Processor Setup 1.0.0.exe` (NSIS installer - x64)
+- `Financial Document Processor Setup 1.0.0-ia32.exe` (NSIS installer - 32-bit)
+- `Financial Document Processor 1.0.0.exe` (Portable - x64)
+- `Financial Document Processor 1.0.0-ia32.exe` (Portable - 32-bit)
 
 **Linux:**
 - `Financial Document Processor-1.0.0.AppImage`

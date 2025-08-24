@@ -84,18 +84,18 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         },
         {
           "target": "portable",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         }
-      ]
+      ],
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "linux": {
       "icon": "assets/icon.png",
@@ -123,12 +123,24 @@
       "shortcutName": "Financial Document Processor"
     },
     "dmg": {
-      "title": "Financial Document Processor",
+      "title": "FinancialDocumentProcessor",
       "backgroundColor": "#1e293b",
       "window": {
         "width": 600,
         "height": 400
-      }
+      },
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "publish": {
       "provider": "github",

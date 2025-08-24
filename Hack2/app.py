@@ -11,6 +11,7 @@ from schema_utils import compile_schemas
 from agents_with_validation import process_forms_with_validation, MainAgent
 from validation_engine import ValidationEngine
 from batch_processor import BatchProcessor
+from FormFIller import PyMuPDFTemporaryFiller, fill_forms_with_temporary_storage, preview_field_mappings
 
 # Ensure we can import modules from the repository root (for llama_parser.py)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -617,10 +618,272 @@ def fill_multiple_forms_single():
             return jsonify({'success': False, 'error': 'No forms were successfully filled'})
             
     except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Multiple form filling error: {str(e)}'
+            }), 500
+
+@app.route('/semantic-form-fill', methods=['POST'])
+def semantic_form_fill():
+    """
+    Fill PDF forms using the FormFIller semantic mapping system.
+    Prevents incorrect field assignments by using semantic field matching.
+    """
+    try:
+        # Get extracted data from cookies
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+
+        try:
+            llama_data = json.loads(extracted_data)
+        except Exception as e:
+            return jsonify({'success': False, 'error': 'Invalid extracted data'})
+
+        # Apply simplification and filtering to the data before filling
+        simplified_data = simplify_llama_output(llama_data) if LLAMA_PARSER_AVAILABLE else llama_data
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"semantic_form_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Use FormFIller for semantic form filling
+                with PyMuPDFTemporaryFiller() as filler:
+                    filled_path = filler.fill_single_form(simplified_data, form_filepath)
+                    
+                    if filled_path:
+                        # Copy filled form to permanent location for download
+                        output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"semantic_filled_{filename}")
+                        import shutil
+                        shutil.copy2(filled_path, output_filepath)
+                        
+                        # Get processing stats
+                        stats = filler.get_processing_stats()
+                        
+                        # Clean up uploaded form
+                        if os.path.exists(form_filepath):
+                            os.remove(form_filepath)
+                        
+                        return jsonify({
+                            'success': True,
+                            'message': f'Successfully filled form using semantic mapping',
+                            'stats': {
+                                'fields_filled': stats['fields_filled'],
+                                'mapping_errors': stats['mapping_errors']
+                            },
+                            'download_url': f'/download-filled-form/{os.path.basename(output_filepath)}'
+                        })
+                    else:
+                        return jsonify({'success': False, 'error': 'Failed to fill PDF form using semantic mapping'})
+                        
+            except Exception as e:
+                # Clean up uploaded form
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({'success': False, 'error': f'Semantic form filling error: {str(e)}'})
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'Multiple form filling error: {str(e)}'
+            'error': f'Semantic form filling error: {str(e)}'
         }), 500
 
+@app.route('/semantic-batch-fill', methods=['POST'])
+def semantic_batch_fill():
+    """
+    Fill multiple PDF forms using the FormFIller semantic mapping system.
+    """
+    try:
+        # Get extracted data from cookies
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+
+        try:
+            llama_data = json.loads(extracted_data)
+        except Exception as e:
+            return jsonify({'success': False, 'error': 'Invalid extracted data'})
+
+        # Apply simplification and filtering to the data before filling
+        simplified_data = simplify_llama_output(llama_data) if LLAMA_PARSER_AVAILABLE else llama_data
+        
+        # Handle multiple form uploads
+        if 'forms' not in request.files:
+            return jsonify({'success': False, 'error': 'No forms uploaded'})
+        
+        form_files = request.files.getlist('forms')
+        if not form_files or all(f.filename == '' for f in form_files):
+            return jsonify({'success': False, 'error': 'No forms selected'})
+        
+        # Save form files
+        form_paths = []
+        for form_file in form_files:
+            if form_file and allowed_file(form_file.filename):
+                filename = secure_filename(form_file.filename)
+                form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"semantic_batch_{filename}")
+                form_file.save(form_filepath)
+                form_paths.append(form_filepath)
+        
+        if not form_paths:
+            return jsonify({'success': False, 'error': 'No valid PDF forms uploaded'})
+        
+        try:
+            # Use FormFIller for semantic batch form filling
+            with PyMuPDFTemporaryFiller() as filler:
+                filled_paths = filler.fill_forms_batch(simplified_data, form_paths)
+                
+                if filled_paths:
+                    # Copy filled forms to permanent location
+                    permanent_filled_forms = []
+                    for i, filled_path in enumerate(filled_paths):
+                        base_name = os.path.basename(form_paths[i])
+                        output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"semantic_batch_filled_{base_name}")
+                        import shutil
+                        shutil.copy2(filled_path, output_filepath)
+                        permanent_filled_forms.append(output_filepath)
+                    
+                    # Get processing stats
+                    stats = filler.get_processing_stats()
+                    
+                    # Clean up uploaded forms
+                    for filepath in form_paths:
+                        if os.path.exists(filepath):
+                            os.remove(filepath)
+                    
+                    # Create a zip file with all filled forms
+                    import zipfile
+                    from datetime import datetime
+                    
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    zip_filename = f"semantic_batch_filled_{timestamp}.zip"
+                    zip_path = os.path.join(app.config['UPLOAD_FOLDER'], zip_filename)
+                    
+                    with zipfile.ZipFile(zip_path, 'w') as zipf:
+                        for filled_form in permanent_filled_forms:
+                            if os.path.exists(filled_form):
+                                zipf.write(filled_form, os.path.basename(filled_form))
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f'Successfully filled {len(filled_paths)} forms using semantic mapping',
+                        'stats': {
+                            'forms_processed': stats['forms_processed'],
+                            'fields_filled': stats['fields_filled'],
+                            'mapping_errors': stats['mapping_errors'],
+                            'fill_errors': stats['fill_errors']
+                        },
+                        'filled_forms_count': len(filled_paths),
+                        'download_url': f'/download-batch-results/{zip_filename}'
+                    })
+                else:
+                    return jsonify({'success': False, 'error': 'No forms were successfully filled using semantic mapping'})
+                    
+        except Exception as e:
+            # Clean up uploaded forms
+            for filepath in form_paths:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            return jsonify({'success': False, 'error': f'Semantic batch filling error: {str(e)}'})
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Semantic batch filling error: {str(e)}'
+        }), 500
+
+@app.route('/preview-field-mapping', methods=['POST'])
+def preview_field_mapping():
+    """
+    Preview how extracted data would be mapped to form fields without actually filling.
+    """
+    try:
+        # Get extracted data from cookies
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+
+        try:
+            llama_data = json.loads(extracted_data)
+        except Exception as e:
+            return jsonify({'success': False, 'error': 'Invalid extracted data'})
+
+        # Apply simplification and filtering to the data before mapping
+        simplified_data = simplify_llama_output(llama_data) if LLAMA_PARSER_AVAILABLE else llama_data
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"preview_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Use FormFIller to preview field mapping
+                with PyMuPDFTemporaryFiller() as filler:
+                    preview = filler.get_field_mapping_preview(simplified_data, form_filepath)
+                    
+                    # Clean up uploaded form
+                    if os.path.exists(form_filepath):
+                        os.remove(form_filepath)
+                    
+                    if "error" in preview:
+                        return jsonify({'success': False, 'error': preview['error']})
+                    
+                    return jsonify({
+                        'success': True,
+                        'preview': preview,
+                        'message': f'Field mapping preview for {filename}'
+                    })
+                        
+            except Exception as e:
+                # Clean up uploaded form
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({'success': False, 'error': f'Field mapping preview error: {str(e)}'})
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Field mapping preview error: {str(e)}'
+        }), 500
+
+@app.route('/download-filled-form/<filename>')
+def download_filled_form(filename):
+    """Download a single filled form"""
+    try:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5002)
