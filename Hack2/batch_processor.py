@@ -18,6 +18,7 @@ from pathlib import Path
 from agents_with_validation import process_forms_with_validation
 from pdfwriter import fill_pdf_from_llama
 from schema_utils import compile_schemas
+from FormFIller import PyMuPDFTemporaryFiller
 
 class BatchProcessor:
     """
