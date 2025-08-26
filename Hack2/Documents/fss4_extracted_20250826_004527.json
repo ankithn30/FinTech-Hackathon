@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "extraction_timestamp": "2025-08-26T00:45:27.152926",
+    "source_file": "Documents/fss4.pdf",
+    "extraction_agent": "OpenAI Extraction Agent",
+    "model_used": "gpt-4o-mini"
+  },
+  "extracted_data": {
+    "personal_info": {
+      "full_name": "Tom Brady",
+      "first_name": "Tom",
+      "last_name": "Brady",
+      "date_of_birth": null,
+      "ssn": null,
+      "phone_number": null,
+      "email": null
+    },
+    "address_info": {
+      "current_address": "101 Main St, Boston, MA",
+      "street_address": "101 Main St",
+      "city": "Boston",
+      "state": "MA",
+      "zip_code": null,
+      "previous_address": "1 Patriot Place, Foxborough, MA",
+      "mailing_address": "Boston, United States of America"
+    },
+    "employment_info": {
+      "employer_name": "Football",
+      "job_title": null,
+      "employment_duration": null,
+      "annual_income": null,
+      "monthly_income": null
+    },
+    "financial_info": {
+      "bank_name": null,
+      "account_number": null,
+      "loan_amount": null,
+      "assets": null,
+      "liabilities": null
+    },
+    "document_metadata": {
+      "document_type": "Form SS-4",
+      "document_date": "2023-12-01",
+      "reference_number": "OMB No. 1545-0003"
+    },
+    "additional_fields": {}
+  }
+}

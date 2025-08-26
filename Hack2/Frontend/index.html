@@ -1463,9 +1463,9 @@
             formData.append('file', file);
             
             showProgress(dataProgressBar, dataProgressFill);
-            showStatus(dataStatusMessage, 'Extracting data from document...', 'info');
+            showStatus(dataStatusMessage, 'Extracting data using OpenAI...', 'info');
             
-            fetch('/upload', {
+            fetch('/openai-extract', {
                 method: 'POST',
                 body: formData
             })
@@ -1474,7 +1474,7 @@
                 hideProgress(dataProgressBar);
                 if (data.success) {
                     extractedData = data.data;
-                    showStatus(dataStatusMessage, `✅ Data extracted successfully! Found ${Object.keys(data.data || {}).length} fields.`, 'success');
+                    showStatus(dataStatusMessage, `✅ OpenAI extraction successful! Found ${data.extraction_summary.total_fields} fields.`, 'success');
                     displayExtractedData(data.data);
                     formStep.classList.remove('hidden');
                     updateButtonStates();
@@ -1494,36 +1494,38 @@
             const formData = new FormData();
             
             if (selectedForms.length === 1) {
-                // Single form
+                // Single form - use new OpenAI schema-based filling
                 formData.append('form_pdf', selectedForms[0]);
                 
                 showProgress(formProgressBar, formProgressFill);
-                showStatus(formStatusMessage, 'Filling form with extracted data...', 'info');
+                showStatus(formStatusMessage, 'Analyzing form schema and filling with OpenAI...', 'info');
                 
-                fetch('/fill-pdf-form', {
+                fetch('/openai-schema-fill', {
                     method: 'POST',
                     body: formData
                 })
-                .then(response => {
-                    if (response.ok) {
-                        return response.blob();
-                    } else {
-                        return response.json().then(data => {
-                            throw new Error(data.error || 'Form filling failed');
-                        });
-                    }
-                })
-                .then(blob => {
+                .then(response => response.json())
+                .then(data => {
                     hideProgress(formProgressBar);
-                    showStatus(formStatusMessage, '✅ Form filled successfully! Downloading...', 'success');
-                    downloadBlob(blob, `filled_${selectedForms[0].name}`);
+                    if (data.success) {
+                        showStatus(formStatusMessage, 
+                            `✅ Schema-based filling successful! Filled ${data.fields_mapped}/${data.total_form_fields} fields. 
+                            Auto-approved: ${data.mapping_summary.auto_approved_count}, 
+                            Medium confidence: ${data.mapping_summary.medium_confidence_count}, 
+                            Skipped: ${data.mapping_summary.skipped_count}`, 'success');
+                        
+                        // Add download and preview buttons
+                        addDownloadAndPreviewButtons(data, formStatusMessage);
+                    } else {
+                        showStatus(formStatusMessage, `❌ Error: ${data.error}`, 'error');
+                    }
                 })
                 .catch(error => {
                     hideProgress(formProgressBar);
                     showStatus(formStatusMessage, `❌ Error: ${error.message}`, 'error');
                 });
             } else {
-                // Multiple forms
+                // Multiple forms - use existing route
                 selectedForms.forEach(file => {
                     formData.append('forms', file);
                 });
@@ -1552,6 +1554,119 @@
                     showStatus(formStatusMessage, `❌ Error: ${error.message}`, 'error');
                 });
             }
+        }
+
+        function addDownloadAndPreviewButtons(data, statusElement) {
+            // Create button container
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.gap = '15px';
+            buttonContainer.style.marginTop = '20px';
+            buttonContainer.style.justifyContent = 'center';
+            buttonContainer.style.flexWrap = 'wrap';
+            
+            // Download button
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'action-btn';
+            downloadBtn.style.width = 'auto';
+            downloadBtn.style.padding = '12px 24px';
+            downloadBtn.style.fontSize = '1rem';
+            downloadBtn.innerHTML = '📥 Download Filled Form';
+            downloadBtn.onclick = () => {
+                window.location.href = data.download_url;
+            };
+            
+            // Preview button
+            const previewBtn = document.createElement('button');
+            previewBtn.className = 'action-btn';
+            previewBtn.style.width = 'auto';
+            previewBtn.style.padding = '12px 24px';
+            previewBtn.style.fontSize = '1rem';
+            previewBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            previewBtn.innerHTML = '👁️ Preview PDF';
+            previewBtn.onclick = () => {
+                showPDFPreview(data.preview_url, data.filename || data.original_filename);
+            };
+            
+            buttonContainer.appendChild(downloadBtn);
+            buttonContainer.appendChild(previewBtn);
+            
+            // Add Forms folder info if available
+            if (data.forms_folder_path) {
+                const infoDiv = document.createElement('div');
+                infoDiv.style.marginTop = '15px';
+                infoDiv.style.padding = '12px';
+                infoDiv.style.background = 'rgba(16, 185, 129, 0.1)';
+                infoDiv.style.borderRadius = '8px';
+                infoDiv.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                infoDiv.style.fontSize = '0.9rem';
+                infoDiv.style.color = '#10b981';
+                infoDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <span>💾</span>
+                        <strong>Form Saved Successfully!</strong>
+                    </div>
+                    <div style="font-size: 0.85rem; opacity: 0.9;">
+                        📁 Saved to Forms folder: ${data.filename}<br>
+                        🕒 Timestamp: ${data.timestamp || 'N/A'}
+                    </div>
+                `;
+                statusElement.parentNode.appendChild(infoDiv);
+            }
+            
+            // Add to status message container
+            statusElement.parentNode.appendChild(buttonContainer);
+        }
+
+        function showPDFPreview(previewUrl, filename) {
+            // Create preview modal
+            const previewModal = document.createElement('div');
+            previewModal.className = 'modal-overlay';
+            previewModal.style.zIndex = '1001';
+            
+            previewModal.innerHTML = `
+                <div class="edit-modal" style="max-width: 800px; max-height: 90%;">
+                    <div class="modal-header">
+                        <h2 class="modal-title">📄 PDF Preview: ${filename}</h2>
+                        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-content" style="background: #f8fafc;">
+                        <div id="pdfPreviewContainer" style="text-align: center; padding: 20px;">
+                            <div style="color: #1e40af; margin-bottom: 20px;">Loading preview...</div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="modal-btn btn-download" onclick="window.location.href='${previewUrl.replace('preview-filled-pdf', 'download-filled-form')}'">📥 Download PDF</button>
+                        <button class="modal-btn btn-cancel" onclick="this.closest('.modal-overlay').remove()">Close</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(previewModal);
+            previewModal.classList.add('show');
+            
+            // Load preview
+            fetch(previewUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('pdfPreviewContainer');
+                    if (data.success) {
+                        container.innerHTML = `
+                            <img src="${data.preview.image}" 
+                                 style="max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" 
+                                 alt="PDF Preview">
+                            <div style="margin-top: 15px; color: #6b7280; font-size: 0.9rem;">
+                                Page ${data.preview.current_page + 1} of ${data.preview.page_count}
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = `<div style="color: #ef4444;">Preview not available: ${data.error}</div>`;
+                    }
+                })
+                .catch(error => {
+                    const container = document.getElementById('pdfPreviewContainer');
+                    container.innerHTML = `<div style="color: #ef4444;">Preview error: ${error.message}</div>`;
+                });
         }
 
         function startBatchProcessing() {

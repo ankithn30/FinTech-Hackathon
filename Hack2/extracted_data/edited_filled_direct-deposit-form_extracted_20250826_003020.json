@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "extraction_timestamp": "2025-08-26T00:30:20.867631",
+    "source_file": "uploads/edited_filled_direct-deposit-form.pdf",
+    "extraction_agent": "OpenAI Extraction Agent",
+    "model_used": "gpt-4o-mini"
+  },
+  "extracted_data": {
+    "personal_info": {
+      "full_name": "Elon Musk",
+      "first_name": "Elon",
+      "last_name": "Musk",
+      "date_of_birth": null,
+      "ssn": "123-456-789",
+      "phone_number": null,
+      "email": null
+    },
+    "address_info": {
+      "current_address": "123 Foxborough, MA 02035",
+      "street_address": "123",
+      "city": "Foxborough",
+      "state": "MA",
+      "zip_code": "02035",
+      "previous_address": null,
+      "mailing_address": null
+    },
+    "employment_info": {
+      "employer_name": null,
+      "job_title": null,
+      "employment_duration": null,
+      "annual_income": null,
+      "monthly_income": null
+    },
+    "financial_info": {
+      "bank_name": "UBS Financial Services Inc.",
+      "account_number": "907863",
+      "loan_amount": null,
+      "assets": null,
+      "liabilities": null
+    },
+    "document_metadata": {
+      "document_type": "Direct Deposit Application",
+      "document_date": null,
+      "reference_number": "2022-968050"
+    },
+    "additional_fields": {}
+  }
+}

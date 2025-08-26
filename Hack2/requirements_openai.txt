@@ -1,0 +1,10 @@
+# OpenAI Two-Agent System Requirements
+# Add these to your existing requirements.txt
+
+openai>=1.0.0
+PyMuPDF>=1.23.0
+python-dotenv>=1.0.0
+
+# Core dependencies (if not already installed)
+flask>=2.3.0
+werkzeug>=2.3.0

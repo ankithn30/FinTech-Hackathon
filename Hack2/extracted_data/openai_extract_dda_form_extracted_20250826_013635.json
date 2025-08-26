@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "extraction_timestamp": "2025-08-26T01:36:35.604894",
+    "source_file": "uploads/openai_extract_dda_form.pdf",
+    "extraction_agent": "OpenAI Extraction Agent",
+    "model_used": "gpt-4o-mini"
+  },
+  "extracted_data": {
+    "personal_info": {
+      "full_name": "Elon Musk",
+      "first_name": "Elon",
+      "last_name": "Musk",
+      "date_of_birth": null,
+      "ssn": "123-456-789",
+      "phone_number": null,
+      "email": null
+    },
+    "address_info": {
+      "current_address": "32 Chestnut St. P.O. Box 1377, Lewiston, ME 04243-1377",
+      "street_address": "32 Chestnut St.",
+      "city": "Lewiston",
+      "state": "ME",
+      "zip_code": "04243-1377",
+      "previous_address": null,
+      "mailing_address": null
+    },
+    "employment_info": {
+      "employer_name": "TD Bank, N.A.",
+      "job_title": null,
+      "employment_duration": null,
+      "annual_income": null,
+      "monthly_income": null
+    },
+    "financial_info": {
+      "bank_name": "TD Bank, N.A.",
+      "account_number": "90483908439",
+      "loan_amount": null,
+      "assets": null,
+      "liabilities": null
+    },
+    "document_metadata": {
+      "document_type": "Direct Deposit Authorization Form",
+      "document_date": "2022-10-01",
+      "reference_number": "11440C-CHK (1022)"
+    },
+    "additional_fields": {}
+  }
+}

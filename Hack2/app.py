@@ -9,14 +9,45 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
 import base64
 from datetime import datetime
-from llama_utils import create_dynamic_schema, parse_pdf_with_dynamic_schema
-from pdfwriter import fill_pdf_from_llama
-from schema_utils import compile_schemas
-from agents_with_validation import process_forms_with_validation, MainAgent
-from validation_engine import ValidationEngine
-from batch_processor import BatchProcessor
-from streamlined_batch_processor import StreamlinedBatchProcessor
-from FormFIller import PyMuPDFTemporaryFiller, fill_forms_with_temporary_storage, preview_field_mappings
+
+# Import new OpenAI agents
+from openai_agent_coordinator import OpenAIAgentCoordinator
+from openai_form_filling_agent_web import OpenAIFormFillingAgentWeb
+
+# Keep legacy imports for backward compatibility
+try:
+    from llama_utils import create_dynamic_schema, parse_pdf_with_dynamic_schema
+    from pdfwriter import fill_pdf_from_llama
+    from schema_utils import compile_schemas
+    from agents_with_validation import process_forms_with_validation, MainAgent
+    from validation_engine import ValidationEngine
+    from batch_processor import BatchProcessor
+    from streamlined_batch_processor import StreamlinedBatchProcessor
+    from FormFIller import PyMuPDFTemporaryFiller, fill_forms_with_temporary_storage, preview_field_mappings
+    LEGACY_AVAILABLE = True
+except ImportError as e:
+    print(f"Legacy modules not available: {e}")
+    LEGACY_AVAILABLE = False
+    # Define fallback functions for missing legacy components
+    def parse_pdf_with_dynamic_schema(filepath):
+        """Fallback function when legacy system is not available"""
+        return {}
+    
+    def create_dynamic_schema(schema_data):
+        """Fallback function when legacy system is not available"""
+        return {}
+    
+    def fill_pdf_from_llama(data, pdf_path, output_path):
+        """Fallback function when legacy system is not available"""
+        return False
+    
+    def compile_schemas(schemas):
+        """Fallback function when legacy system is not available"""
+        return {}
+    
+    def process_forms_with_validation(form_paths):
+        """Fallback function when legacy system is not available"""
+        return {'status': 'error', 'message': 'Legacy system not available'}
 
 # Ensure we can import modules from the repository root (for llama_parser.py)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,18 +60,37 @@ try:
 except Exception as _e:
     # Fall back if llama_parser has missing deps or cannot import
     LLAMA_PARSER_AVAILABLE = False
+    # Define fallback functions for missing llama_parser components
+    def llama_parse(filepaths, schema):
+        """Fallback function when llama_parser is not available"""
+        return {}
+    
+    def simplify_llama_output(data):
+        """Fallback function when llama_parser is not available"""
+        if isinstance(data, dict):
+            return data
+        return {}
+    
+    def filter_filled_fields(data):
+        """Fallback function when llama_parser is not available"""
+        return data
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Change this in production
 
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
+FORMS_FOLDER = 'Forms'
 ALLOWED_EXTENSIONS = {'pdf'}
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+if not os.path.exists(FORMS_FOLDER):
+    os.makedirs(FORMS_FOLDER)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['FORMS_FOLDER'] = FORMS_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Basic authentication configuration
@@ -1044,6 +1094,15 @@ def fill_pdf_form():
             output_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"filled_{filename}")
             success = fill_pdf_from_llama(simplified_data, pdf_path=form_filepath, output_path=output_filepath)
             if success:
+                # Also save to Forms folder
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base_name = os.path.splitext(filename)[0]
+                forms_filename = f"{base_name}_filled_{timestamp}.pdf"
+                forms_path = os.path.join(app.config['FORMS_FOLDER'], forms_filename)
+                import shutil
+                shutil.copy2(output_filepath, forms_path)
+                print(f"💾 Filled form saved to Forms folder: {forms_path}")
+                
                 return send_file(output_filepath, as_attachment=True, download_name=f"filled_{filename}", mimetype='application/pdf')
             else:
                 return jsonify({'success': False, 'error': 'Failed to fill PDF form'})
@@ -1397,6 +1456,40 @@ def download_filled_form(filename):
             return jsonify({'error': 'File not found'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/preview-filled-pdf/<filename>')
+@login_required
+def preview_filled_pdf(filename):
+    """Generate a preview of a filled PDF form for web display"""
+    try:
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Also check Forms folder
+        if not os.path.exists(file_path):
+            forms_path = os.path.join('Forms', filename)
+            if os.path.exists(forms_path):
+                file_path = forms_path
+        
+        if os.path.exists(file_path):
+            # Get page number from query parameter (default to 0)
+            page_num = int(request.args.get('page', 0))
+            
+            # Generate preview
+            preview_result = pdf_to_base64_preview(file_path, page_num)
+            
+            if preview_result['success']:
+                return jsonify({
+                    'success': True,
+                    'preview': preview_result,
+                    'filename': filename,
+                    'file_path': file_path
+                })
+            else:
+                return jsonify({'success': False, 'error': preview_result['error']})
+        else:
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/preview-document', methods=['POST'])
 @login_required
@@ -1873,6 +1966,571 @@ def streamlined_batch_process():
         return jsonify({
             'success': False,
             'error': f'Streamlined batch processing error: {str(e)}'
+        }), 500
+
+# New OpenAI Two-Agent System Routes
+
+@app.route('/openai-extract', methods=['POST'])
+@login_required
+def openai_extract():
+    """
+    Extract data using OpenAI Extraction Agent - with direct terminal output
+    """
+    try:
+        # Check if OpenAI API key is available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 500
+        
+        # Handle file upload
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file uploaded'})
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'})
+        
+        if file and allowed_file(file.filename):
+            # Save uploaded file temporarily
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"openai_extract_{filename}")
+            file.save(filepath)
+            
+            try:
+                print("\n" + "="*100)
+                print(f"🚀 STARTING DIRECT OPENAI EXTRACTION FOR: {filename}")
+                print("="*100)
+                
+                # Initialize OpenAI extraction agent directly
+                from openai_extraction_agent import OpenAIExtractionAgent
+                agent = OpenAIExtractionAgent(api_key=api_key)
+                
+                # Extract data directly - this will print to terminal
+                result = agent.extract_from_document(filepath)
+                
+                # Clean up uploaded file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                
+                if result["success"]:
+                    extracted_data = result["extracted_data"]
+                    json_path = result["json_file_path"]
+                    
+                    print("\n" + "="*100)
+                    print("💾 FINAL EXTRACTION RESULT:")
+                    print("="*100)
+                    print(f"📄 Source file: {filename}")
+                    print(f"💾 JSON saved to: {json_path}")
+                    print(f"📊 Total fields extracted: {result['extraction_summary']['total_fields']}")
+                    print("="*100)
+                    
+                    response = jsonify({
+                        'success': True,
+                        'data': extracted_data,
+                        'filename': filename,
+                        'extraction_summary': result.get("extraction_summary", {}),
+                        'agent_info': 'OpenAI Extraction Agent (Direct)',
+                        'json_file_path': json_path
+                    })
+                    
+                    # Store data in cookies
+                    if extracted_data:
+                        cookie_data = json.dumps(extracted_data)
+                        response.set_cookie('extracted_data', cookie_data, max_age=240, httponly=False)
+                        response.set_cookie('has_data', 'true', max_age=240, httponly=False)
+                        if json_path:
+                            response.set_cookie('json_file_path', json_path, max_age=240, httponly=False)
+                    
+                    return response
+                else:
+                    print(f"\n❌ EXTRACTION FAILED: {result.get('error', 'Unknown error')}")
+                    return jsonify({
+                        'success': False,
+                        'error': result.get("error", "Extraction failed")
+                    }), 500
+                    
+            except Exception as e:
+                print(f"\n❌ EXTRACTION ERROR: {str(e)}")
+                # Clean up uploaded file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                return jsonify({
+                    'success': False,
+                    'error': f'OpenAI extraction error: {str(e)}'
+                }), 500
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        print(f"\n❌ ROUTE ERROR: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'OpenAI extraction error: {str(e)}'
+        }), 500
+
+@app.route('/openai-fill-form', methods=['POST'])
+@login_required
+def openai_fill_form():
+    """
+    Fill PDF form using OpenAI Form Filling Agent
+    """
+    try:
+        # Check if OpenAI API key is available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 500
+        
+        # Get JSON file path from cookies or check for extracted data
+        json_path = request.cookies.get('json_file_path')
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+        
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"openai_form_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Initialize OpenAI coordinator
+                coordinator = OpenAIAgentCoordinator(api_key=api_key)
+                
+                # If we have a JSON file path, use it directly
+                if json_path and os.path.exists(json_path):
+                    temp_json_path = json_path
+                else:
+                    # Create temporary JSON file from cookie data
+                    temp_json_data = json.loads(extracted_data)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    temp_json_filename = f"temp_extracted_{timestamp}.json"
+                    temp_json_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_json_filename)
+                    
+                    with open(temp_json_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "metadata": {
+                                "extraction_timestamp": datetime.now().isoformat(),
+                                "source": "cookie_data",
+                                "extraction_agent": "OpenAI Extraction Agent"
+                            },
+                            "extracted_data": temp_json_data
+                        }, f, indent=2)
+                
+                # Fill form using OpenAI agent
+                result = coordinator.fill_forms_with_json([form_filepath], temp_json_path)
+                
+                # Clean up files
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                if not json_path and os.path.exists(temp_json_path):  # Only remove temp file
+                    os.remove(temp_json_path)
+                
+                if result["success"] and result["individual_results"]:
+                    form_result = result["individual_results"][0]
+                    if form_result["success"] and "output_pdf" in form_result:
+                        return send_file(
+                            form_result["output_pdf"], 
+                            as_attachment=True, 
+                            download_name=f"openai_filled_{filename}", 
+                            mimetype='application/pdf'
+                        )
+                
+                return jsonify({
+                    'success': False,
+                    'error': result.get("error", "Form filling failed")
+                }), 500
+                
+            except Exception as e:
+                # Clean up files
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({
+                    'success': False,
+                    'error': f'OpenAI form filling error: {str(e)}'
+                }), 500
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'OpenAI form filling error: {str(e)}'
+        }), 500
+
+@app.route('/openai-batch-process', methods=['POST'])
+@login_required
+def openai_batch_process():
+    """
+    Complete two-agent workflow: extract from documents, fill multiple forms
+    """
+    try:
+        # Check if OpenAI API key is available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 500
+        
+        # Handle multiple document and form uploads
+        documents = request.files.getlist('documents') if 'documents' in request.files else []
+        forms = request.files.getlist('forms') if 'forms' in request.files else []
+        
+        if not documents:
+            return jsonify({'success': False, 'error': 'No documents uploaded'})
+        
+        if not forms:
+            return jsonify({'success': False, 'error': 'No forms uploaded'})
+        
+        # Save uploaded documents
+        document_paths = []
+        for file in documents:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"openai_batch_doc_{filename}")
+                file.save(filepath)
+                document_paths.append(filepath)
+        
+        # Save uploaded forms
+        form_paths = []
+        for file in forms:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"openai_batch_form_{filename}")
+                file.save(filepath)
+                form_paths.append(filepath)
+        
+        if not document_paths:
+            return jsonify({'success': False, 'error': 'No valid PDF documents uploaded'})
+        
+        if not form_paths:
+            return jsonify({'success': False, 'error': 'No valid PDF forms uploaded'})
+        
+        try:
+            # Initialize OpenAI coordinator
+            coordinator = OpenAIAgentCoordinator(api_key=api_key)
+            
+            # Run complete two-agent workflow
+            result = coordinator.extract_and_fill_workflow(document_paths, form_paths)
+            
+            # Clean up uploaded files
+            for filepath in document_paths + form_paths:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            
+            if result["success"]:
+                # Create ZIP file with filled forms
+                filled_form_paths = result["workflow_summary"]["filled_form_paths"]
+                
+                if filled_form_paths:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    zip_filename = f"openai_batch_results_{timestamp}.zip"
+                    zip_path = coordinator.create_zip_archive(filled_form_paths, f"openai_batch_results_{timestamp}")
+                    
+                    if zip_path:
+                        # Copy to upload folder for download
+                        final_zip_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(zip_path))
+                        import shutil
+                        shutil.copy2(zip_path, final_zip_path)
+                        
+                        return jsonify({
+                            'success': True,
+                            'message': f'OpenAI two-agent workflow completed successfully!',
+                            'workflow_summary': result["workflow_summary"],
+                            'agent_info': result["agent_info"],
+                            'download_url': f'/download-batch-results/{os.path.basename(final_zip_path)}',
+                            'stats': {
+                                'documents_processed': result["workflow_summary"]["total_documents_processed"],
+                                'forms_filled': result["workflow_summary"]["successful_form_fills"],
+                                'workflow_duration': result["workflow_summary"]["workflow_duration_seconds"]
+                            }
+                        })
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Workflow completed but no forms were filled',
+                    'workflow_summary': result["workflow_summary"]
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': result.get("error", "Two-agent workflow failed"),
+                    'stage': result.get("stage", "unknown")
+                }), 500
+                
+        except Exception as e:
+            # Clean up files on error
+            for filepath in document_paths + form_paths:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            return jsonify({
+                'success': False,
+                'error': f'OpenAI batch processing error: {str(e)}'
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'OpenAI batch processing error: {str(e)}'
+        }), 500
+
+@app.route('/openai-preview-mapping', methods=['POST'])
+@login_required
+def openai_preview_mapping():
+    """
+    Preview field mapping using OpenAI Form Filling Agent
+    """
+    try:
+        # Check if OpenAI API key is available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 500
+        
+        # Get JSON file path from cookies or check for extracted data
+        json_path = request.cookies.get('json_file_path')
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+        
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"openai_preview_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                # Initialize OpenAI coordinator
+                coordinator = OpenAIAgentCoordinator(api_key=api_key)
+                
+                # If we have a JSON file path, use it directly
+                if json_path and os.path.exists(json_path):
+                    temp_json_path = json_path
+                else:
+                    # Create temporary JSON file from cookie data
+                    temp_json_data = json.loads(extracted_data)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    temp_json_filename = f"temp_preview_{timestamp}.json"
+                    temp_json_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_json_filename)
+                    
+                    with open(temp_json_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "metadata": {
+                                "extraction_timestamp": datetime.now().isoformat(),
+                                "source": "cookie_data",
+                                "extraction_agent": "OpenAI Extraction Agent"
+                            },
+                            "extracted_data": temp_json_data
+                        }, f, indent=2)
+                
+                # Preview field mapping
+                result = coordinator.preview_form_mapping(form_filepath, temp_json_path)
+                
+                # Clean up files
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                if not json_path and os.path.exists(temp_json_path):  # Only remove temp file
+                    os.remove(temp_json_path)
+                
+                if result["success"]:
+                    return jsonify({
+                        'success': True,
+                        'preview': result,
+                        'message': f'OpenAI field mapping preview for {filename}',
+                        'agent_info': 'OpenAI Form Filling Agent'
+                    })
+                else:
+                    return jsonify({
+                        'success': False,
+                        'error': result.get("error", "Preview generation failed")
+                    }), 500
+                    
+            except Exception as e:
+                # Clean up files
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({
+                    'success': False,
+                    'error': f'OpenAI preview error: {str(e)}'
+                }), 500
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'OpenAI preview error: {str(e)}'
+        }), 500
+
+@app.route('/openai-schema-fill', methods=['POST'])
+@login_required
+def openai_schema_fill():
+    """
+    Web-compatible schema-based form filling with OpenAI agents
+    """
+    try:
+        # Check if OpenAI API key is available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 500
+        
+        # Get JSON file path from cookies or check for extracted data
+        json_path = request.cookies.get('json_file_path')
+        extracted_data = request.cookies.get('extracted_data')
+        has_data = request.cookies.get('has_data')
+        
+        if not has_data or not extracted_data:
+            return jsonify({'success': False, 'error': 'No extracted data found. Please extract data first.'})
+        
+        # Handle form upload
+        if 'form_pdf' not in request.files:
+            return jsonify({'success': False, 'error': 'No PDF form uploaded'})
+        
+        form_pdf = request.files['form_pdf']
+        if form_pdf.filename == '':
+            return jsonify({'success': False, 'error': 'No PDF form selected'})
+        
+        if form_pdf and allowed_file(form_pdf.filename):
+            filename = secure_filename(form_pdf.filename)
+            form_filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"schema_form_{filename}")
+            form_pdf.save(form_filepath)
+            
+            try:
+                print("\n" + "="*100)
+                print(f"🔍 STARTING SCHEMA-BASED FORM FILLING FOR: {filename}")
+                print("="*100)
+                
+                # Initialize web-compatible form filling agent
+                agent = OpenAIFormFillingAgentWeb(api_key=api_key)
+                
+                # If we have a JSON file path, use it directly
+                if json_path and os.path.exists(json_path):
+                    temp_json_path = json_path
+                else:
+                    # Create temporary JSON file from cookie data
+                    temp_json_data = json.loads(extracted_data)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    temp_json_filename = f"temp_schema_{timestamp}.json"
+                    temp_json_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_json_filename)
+                    
+                    with open(temp_json_path, 'w', encoding='utf-8') as f:
+                        json.dump({
+                            "metadata": {
+                                "extraction_timestamp": datetime.now().isoformat(),
+                                "source": "cookie_data",
+                                "extraction_agent": "OpenAI Extraction Agent"
+                            },
+                            "extracted_data": temp_json_data
+                        }, f, indent=2)
+                
+                # Fill form using web-compatible agent
+                result = agent.fill_form_from_json_web(form_filepath, temp_json_path)
+                
+                # Clean up files
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                if not json_path and os.path.exists(temp_json_path):  # Only remove temp file
+                    os.remove(temp_json_path)
+                
+                if result["success"]:
+                    print("\n" + "="*100)
+                    print("✅ SCHEMA-BASED FORM FILLING COMPLETED")
+                    print("="*100)
+                    print(f"📄 Form: {filename}")
+                    print(f"📊 Fields filled: {result['fields_mapped']}/{result['total_form_fields']}")
+                    print(f"🎯 Auto-approved (90%+): {result['mapping_summary']['auto_approved_count']}")
+                    print(f"📊 Medium confidence (70-89%): {result['mapping_summary']['medium_confidence_count']}")
+                    print(f"⏭️  Skipped (<70%): {result['mapping_summary']['skipped_count']}")
+                    print("="*100)
+                    
+                    # Generate timestamp for unique filename
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    base_name = os.path.splitext(filename)[0]
+                    output_filename = f"{base_name}_filled_{timestamp}.pdf"
+                    
+                    # Copy filled form to Forms folder (primary storage)
+                    forms_path = os.path.join(app.config['FORMS_FOLDER'], output_filename)
+                    import shutil
+                    shutil.copy2(result["output_pdf"], forms_path)
+                    
+                    # Also copy to uploads folder for web download
+                    web_download_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+                    shutil.copy2(result["output_pdf"], web_download_path)
+                    
+                    print(f"💾 Filled form saved to: {forms_path}")
+                    print(f"🌐 Web download available at: {web_download_path}")
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f'Schema-based form filling completed for {filename}',
+                        'filename': output_filename,
+                        'original_filename': filename,
+                        'fields_mapped': result['fields_mapped'],
+                        'total_form_fields': result['total_form_fields'],
+                        'schema_analysis': result['schema_analysis'],
+                        'mapping_summary': result['mapping_summary'],
+                        'high_confidence_mappings': result['high_confidence_mappings'],
+                        'medium_confidence_mappings': result['medium_confidence_mappings'],
+                        'skipped_mappings': result['skipped_mappings'],
+                        'agent_info': 'OpenAI Schema-Based Form Filling Agent (Web)',
+                        'download_url': f'/download-filled-form/{output_filename}',
+                        'preview_url': f'/preview-filled-pdf/{output_filename}',
+                        'forms_folder_path': forms_path,
+                        'timestamp': timestamp
+                    })
+                else:
+                    print(f"\n❌ SCHEMA-BASED FORM FILLING FAILED: {result.get('error', 'Unknown error')}")
+                    return jsonify({
+                        'success': False,
+                        'error': result.get("error", "Schema-based form filling failed")
+                    }), 500
+                    
+            except Exception as e:
+                print(f"\n❌ SCHEMA FILLING ERROR: {str(e)}")
+                # Clean up files
+                if os.path.exists(form_filepath):
+                    os.remove(form_filepath)
+                return jsonify({
+                    'success': False,
+                    'error': f'OpenAI schema filling error: {str(e)}'
+                }), 500
+        
+        return jsonify({'success': False, 'error': 'Invalid file type. Only PDF files are allowed.'})
+        
+    except Exception as e:
+        print(f"\n❌ SCHEMA ROUTE ERROR: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'OpenAI schema filling error: {str(e)}'
         }), 500
 
 if __name__ == '__main__':
