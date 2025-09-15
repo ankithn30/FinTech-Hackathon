@@ -5,7 +5,7 @@ from schema_utils import compile_schemas
 import anthropic
 
 # Initialize the Anthropic client with your API key
-client = anthropic.Anthropic(api_key="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")
+client = anthropic.Anthropic(api_key="")
 
 def generate_schema(form_path: str) -> dict:
     """
@@ -92,4 +92,5 @@ Do not attempt to read or extract data yourself — delegate this task entirely 
         
     except Exception as e:
         print(f"Main Agent Error: {e}")
+
         return []
